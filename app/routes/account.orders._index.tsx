@@ -63,7 +63,7 @@ export default function Orders() {
   const {orders} = customer;
 
   return (
-    <div className="orders">
+    <div>
       <OrderSearchForm currentFilters={filters} />
       <OrdersTable orders={orders} filters={filters} />
     </div>
@@ -80,7 +80,7 @@ function OrdersTable({
   const hasFilters = !!(filters.name || filters.confirmationNumber);
 
   return (
-    <div className="acccount-orders" aria-live="polite">
+    <div aria-live="polite">
       {orders?.nodes.length ? (
         <PaginatedResourceSection connection={orders}>
           {({node: order}) => <OrderItem key={order.id} order={order} />}
@@ -94,22 +94,20 @@ function OrdersTable({
 
 function EmptyOrders({hasFilters = false}: {hasFilters?: boolean}) {
   return (
-    <div>
+    <div className="py-12 text-center">
       {hasFilters ? (
         <>
-          <p>No orders found matching your search.</p>
-          <br />
-          <p>
-            <Link to="/account/orders">Clear filters →</Link>
-          </p>
+          <p className="text-muted">No orders found matching your search.</p>
+          <Link to="/account/orders" className="btn btn-dark mt-6">
+            Clear filters
+          </Link>
         </>
       ) : (
         <>
-          <p>You haven&apos;t placed any orders yet.</p>
-          <br />
-          <p>
-            <Link to="/collections">Start Shopping →</Link>
-          </p>
+          <p className="text-muted">You haven&apos;t placed any orders yet.</p>
+          <Link to="/collections" className="btn btn-dark mt-6">
+            Start shopping
+          </Link>
         </>
       )}
     </div>
@@ -152,33 +150,52 @@ function OrderSearchForm({
     <form
       ref={formRef}
       onSubmit={handleSubmit}
-      className="order-search-form"
+      className="mb-8 rounded-2xl border border-black/10 bg-[#f5f5f5] p-4"
       aria-label="Search orders"
     >
-      <fieldset className="order-search-fieldset">
-        <legend className="order-search-legend">Filter Orders</legend>
+      <p className="eyebrow mb-3 text-brand-700">Filter orders</p>
 
-        <div className="order-search-inputs">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="flex-1">
+          <label
+            htmlFor={ORDER_FILTER_FIELDS.NAME}
+            className="mb-1.5 block text-sm font-semibold text-ink"
+          >
+            Order #
+          </label>
           <input
+            id={ORDER_FILTER_FIELDS.NAME}
             type="search"
             name={ORDER_FILTER_FIELDS.NAME}
             placeholder="Order #"
             aria-label="Order number"
             defaultValue={currentFilters.name || ''}
-            className="order-search-input"
+            className="w-full rounded-2xl border border-black/15 bg-white px-4 py-2.5 text-sm text-ink placeholder:text-muted transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
           />
+        </div>
+        <div className="flex-1">
+          <label
+            htmlFor={ORDER_FILTER_FIELDS.CONFIRMATION_NUMBER}
+            className="mb-1.5 block text-sm font-semibold text-ink"
+          >
+            Confirmation #
+          </label>
           <input
+            id={ORDER_FILTER_FIELDS.CONFIRMATION_NUMBER}
             type="search"
             name={ORDER_FILTER_FIELDS.CONFIRMATION_NUMBER}
             placeholder="Confirmation #"
             aria-label="Confirmation number"
             defaultValue={currentFilters.confirmationNumber || ''}
-            className="order-search-input"
+            className="w-full rounded-2xl border border-black/15 bg-white px-4 py-2.5 text-sm text-ink placeholder:text-muted transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
           />
         </div>
-
-        <div className="order-search-buttons">
-          <button type="submit" disabled={isSearching}>
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={isSearching}
+            className="btn btn-dark !px-5 !py-2.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             {isSearching ? 'Searching' : 'Search'}
           </button>
           {hasFilters && (
@@ -189,12 +206,13 @@ function OrderSearchForm({
                 setSearchParams(new URLSearchParams());
                 formRef.current?.reset();
               }}
+              className="btn btn-outline !px-5 !py-2.5 text-sm disabled:opacity-40"
             >
               Clear
             </button>
           )}
         </div>
-      </fieldset>
+      </div>
     </form>
   );
 }
@@ -202,21 +220,44 @@ function OrderSearchForm({
 function OrderItem({order}: {order: OrderItemFragment}) {
   const fulfillmentStatus = flattenConnection(order.fulfillments)[0]?.status;
   return (
-    <>
-      <fieldset>
-        <Link to={`/account/orders/${btoa(order.id)}`}>
-          <strong>#{order.number}</strong>
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/10 p-5 transition hover:border-black/25">
+      <div>
+        <Link
+          to={`/account/orders/${btoa(order.id)}`}
+          className="font-bold text-ink"
+        >
+          #{order.number}
         </Link>
-        <p>{new Date(order.processedAt).toDateString()}</p>
+        <p className="text-sm text-muted">
+          {new Date(order.processedAt).toDateString()}
+        </p>
         {order.confirmationNumber && (
-          <p>Confirmation: {order.confirmationNumber}</p>
+          <p className="text-xs text-muted">
+            Confirmation: {order.confirmationNumber}
+          </p>
         )}
-        <p>{order.financialStatus}</p>
-        {fulfillmentStatus && <p>{fulfillmentStatus}</p>}
-        <Money data={order.totalPrice} />
-        <Link to={`/account/orders/${btoa(order.id)}`}>View Order →</Link>
-      </fieldset>
-      <br />
-    </>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center rounded-full bg-mint px-2.5 py-1 text-xs font-semibold text-brand-700">
+          {order.financialStatus}
+        </span>
+        {fulfillmentStatus && (
+          <span className="inline-flex items-center rounded-full bg-mint px-2.5 py-1 text-xs font-semibold text-brand-700">
+            {fulfillmentStatus}
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Money data={order.totalPrice} className="font-semibold text-ink" />
+        <Link
+          to={`/account/orders/${btoa(order.id)}`}
+          className="btn btn-outline !px-4 !py-2 text-sm"
+        >
+          View order
+        </Link>
+      </div>
+    </div>
   );
 }
