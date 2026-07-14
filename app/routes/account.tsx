@@ -44,54 +44,56 @@ export default function AccountLayout() {
     : 'Account Details';
 
   return (
-    <div className="account">
-      <h1>{heading}</h1>
-      <br />
-      <AccountMenu />
-      <br />
-      <br />
-      <Outlet context={{customer}} />
-    </div>
+    <section className="bg-paper">
+      <div className="ui-container py-12 md:py-16">
+        <p className="eyebrow text-brand-700">My Account</p>
+        <h1 className="mt-1 text-3xl font-extrabold uppercase tracking-tight text-ink md:text-4xl">
+          {heading}
+        </h1>
+        <AccountMenu />
+        <div className="mt-8">
+          <Outlet context={{customer}} />
+        </div>
+      </div>
+    </section>
   );
 }
 
 function AccountMenu() {
-  function isActiveStyle({
-    isActive,
-    isPending,
-  }: {
-    isActive: boolean;
-    isPending: boolean;
-  }) {
-    return {
-      fontWeight: isActive ? 'bold' : undefined,
-      color: isPending ? 'grey' : 'black',
-    };
-  }
+  const tab = ({isActive}: {isActive: boolean}) =>
+    `rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+      isActive
+        ? 'bg-ink text-white'
+        : 'bg-[#f5f5f5] text-ink hover:bg-mint'
+    }`;
 
   return (
-    <nav role="navigation">
-      <NavLink to="/account/orders" style={isActiveStyle}>
-        Orders &nbsp;
+    <nav
+      role="navigation"
+      className="mt-6 flex flex-wrap items-center gap-2 border-b border-black/10 pb-6"
+    >
+      <NavLink to="/account/orders" className={tab}>
+        Orders
       </NavLink>
-      &nbsp;|&nbsp;
-      <NavLink to="/account/profile" style={isActiveStyle}>
-        &nbsp; Profile &nbsp;
+      <NavLink to="/account/profile" className={tab}>
+        Profile
       </NavLink>
-      &nbsp;|&nbsp;
-      <NavLink to="/account/addresses" style={isActiveStyle}>
-        &nbsp; Addresses &nbsp;
+      <NavLink to="/account/addresses" className={tab}>
+        Addresses
       </NavLink>
-      &nbsp;|&nbsp;
-      <Logout />
+      <span className="ml-auto">
+        <Logout />
+      </span>
     </nav>
   );
 }
 
 function Logout() {
   return (
-    <Form className="account-logout" method="POST" action="/account/logout">
-      &nbsp;<button type="submit">Sign out</button>
+    <Form method="POST" action="/account/logout">
+      <button type="submit" className="btn btn-outline !px-4 !py-2 text-sm">
+        Sign out
+      </button>
     </Form>
   );
 }

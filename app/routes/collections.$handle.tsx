@@ -69,21 +69,34 @@ export default function Collection() {
   const {collection} = useLoaderData<typeof loader>();
 
   return (
-    <div className="collection">
-      <h1>{collection.title}</h1>
-      <p className="collection-description">{collection.description}</p>
-      <PaginatedResourceSection<ProductItemFragment>
-        connection={collection.products}
-        resourcesClassName="products-grid"
-      >
-        {({node: product, index}) => (
-          <ProductItem
-            key={product.id}
-            product={product}
-            loading={index < 8 ? 'eager' : undefined}
-          />
-        )}
-      </PaginatedResourceSection>
+    <div className="bg-paper">
+      <div className="bg-mint">
+        <div className="ui-container py-14">
+          <span className="eyebrow text-brand-700">Collection</span>
+          <h1 className="mt-3 text-4xl font-extrabold uppercase tracking-tight md:text-6xl">
+            {collection.title}
+          </h1>
+          {collection.description && (
+            <p className="mt-4 max-w-2xl text-muted">
+              {collection.description}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="ui-container py-12">
+        <PaginatedResourceSection<ProductItemFragment>
+          connection={collection.products}
+          resourcesClassName="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4"
+        >
+          {({node: product, index}) => (
+            <ProductItem
+              key={product.id}
+              product={product}
+              loading={index < 8 ? 'eager' : undefined}
+            />
+          )}
+        </PaginatedResourceSection>
+      </div>
       <Analytics.CollectionView
         data={{
           collection: {

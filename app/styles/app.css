@@ -1,5 +1,6 @@
+@layer components {
 :root {
-  --aside-width: 400px;
+  --aside-width: 30rem;
   --cart-aside-summary-height-with-discount: 300px;
   --cart-aside-summary-height: 250px;
   --grid-item-width: 355px;
@@ -642,4 +643,5 @@ button.reset:hover:not(:has(> *)) {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
 }

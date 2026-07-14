@@ -46,20 +46,29 @@ export default function Collections() {
   const {collections} = useLoaderData<typeof loader>();
 
   return (
-    <div className="collections">
-      <h1>Collections</h1>
-      <PaginatedResourceSection<CollectionFragment>
-        connection={collections}
-        resourcesClassName="collections-grid"
-      >
-        {({node: collection, index}) => (
-          <CollectionItem
-            key={collection.id}
-            collection={collection}
-            index={index}
-          />
-        )}
-      </PaginatedResourceSection>
+    <div className="bg-paper">
+      <div className="bg-mint">
+        <div className="ui-container py-14">
+          <span className="eyebrow text-brand-700">Browse</span>
+          <h1 className="mt-3 text-4xl font-extrabold uppercase tracking-tight md:text-6xl">
+            Collections
+          </h1>
+        </div>
+      </div>
+      <div className="ui-container py-12">
+        <PaginatedResourceSection<CollectionFragment>
+          connection={collections}
+          resourcesClassName="grid grid-cols-2 gap-4 md:grid-cols-3"
+        >
+          {({node: collection, index}) => (
+            <CollectionItem
+              key={collection.id}
+              collection={collection}
+              index={index}
+            />
+          )}
+        </PaginatedResourceSection>
+      </div>
     </div>
   );
 }
@@ -73,21 +82,27 @@ function CollectionItem({
 }) {
   return (
     <Link
-      className="collection-item"
+      className="group block"
       key={collection.id}
       to={`/collections/${collection.handle}`}
       prefetch="intent"
     >
-      {collection?.image && (
-        <Image
-          alt={collection.image.altText || collection.title}
-          aspectRatio="1/1"
-          data={collection.image}
-          loading={index < 3 ? 'eager' : undefined}
-          sizes="(min-width: 45em) 400px, 100vw"
-        />
-      )}
-      <h5>{collection.title}</h5>
+      <div className="relative aspect-square overflow-hidden rounded-3xl bg-mint">
+        {collection?.image && (
+          <Image
+            alt={collection.image.altText || collection.title}
+            aspectRatio="1/1"
+            data={collection.image}
+            loading={index < 3 ? 'eager' : undefined}
+            sizes="(min-width: 45em) 400px, 100vw"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+        <h5 className="absolute bottom-4 left-5 text-xl font-extrabold uppercase text-white">
+          {collection.title}
+        </h5>
+      </div>
     </Link>
   );
 }

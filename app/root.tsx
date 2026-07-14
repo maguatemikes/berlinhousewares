@@ -13,6 +13,7 @@ import {
 import type {Route} from './+types/root';
 import favicon from '~/assets/favicon.svg';
 import {FOOTER_QUERY, HEADER_QUERY} from '~/lib/fragments';
+import {CUSTOMER_MENU_QUERY} from '~/graphql/customer-account/CustomerMenuQuery';
 import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
 import tailwindCss from './styles/tailwind.css?url';
@@ -135,12 +136,30 @@ function loadDeferredData({context}: Route.LoaderArgs) {
       console.error(error);
       return null;
     });
+
+  // Deferred customer identity for the header (Sign In ↔ Hi, {name}).
+  const customer = (async () => {
+    try {
+      if (!(await customerAccount.isLoggedIn())) return null;
+      const {data} = await customerAccount.query(CUSTOMER_MENU_QUERY);
+      const c = (data as {customer?: HeaderCustomer | null} | undefined)
+        ?.customer;
+      return c ?? null;
+    } catch {
+      // Not configured / expired session — treat as signed out, never crash.
+      return null;
+    }
+  })();
+
   return {
     cart: cart.get(),
     isLoggedIn: customerAccount.isLoggedIn(),
+    customer,
     footer,
   };
 }
+
+type HeaderCustomer = {firstName?: string | null; lastName?: string | null};
 
 export function Layout({children}: {children?: React.ReactNode}) {
   const nonce = useNonce();

@@ -20,6 +20,7 @@ interface PageLayoutProps {
   footer: Promise<FooterQuery | null>;
   header: HeaderQuery;
   isLoggedIn: Promise<boolean>;
+  customer: Promise<{firstName?: string | null; lastName?: string | null} | null>;
   publicStoreDomain: string;
   children?: React.ReactNode;
 }
@@ -30,6 +31,7 @@ export function PageLayout({
   footer,
   header,
   isLoggedIn,
+  customer,
   publicStoreDomain,
 }: PageLayoutProps) {
   return (
@@ -42,6 +44,7 @@ export function PageLayout({
           header={header}
           cart={cart}
           isLoggedIn={isLoggedIn}
+          customer={customer}
           publicStoreDomain={publicStoreDomain}
         />
       )}
@@ -57,7 +60,7 @@ export function PageLayout({
 
 function CartAside({cart}: {cart: PageLayoutProps['cart']}) {
   return (
-    <Aside type="cart" heading="CART">
+    <Aside type="cart" heading="Shopping Cart">
       <Suspense fallback={<p>Loading cart ...</p>}>
         <Await resolve={cart}>
           {(cart) => {

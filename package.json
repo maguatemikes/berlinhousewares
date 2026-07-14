@@ -7,6 +7,7 @@
   "scripts": {
     "build": "shopify hydrogen build --codegen",
     "dev": "shopify hydrogen dev --codegen",
+    "dev:login": "shopify hydrogen dev --codegen --customer-account-push",
     "preview": "shopify hydrogen preview --build",
     "lint": "eslint --no-error-on-unmatched-pattern .",
     "typecheck": "react-router typegen && tsc --noEmit",
@@ -14,6 +15,7 @@
   },
   "prettier": "@shopify/prettier-config",
   "dependencies": {
+    "@fontsource/inter": "^5.2.8",
     "@shopify/hydrogen": "2026.4.3",
     "graphql": "^16.10.0",
     "graphql-tag": "^2.12.6",

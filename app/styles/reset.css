@@ -1,16 +1,7 @@
+@layer base {
 body {
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    'Open Sans',
-    'Helvetica Neue',
-    sans-serif;
+  /* Font stack is defined in tailwind.css (@theme --font-sans: Futura → Jost) */
+  font-family: var(--font-sans);
   margin: 0;
   padding: 0;
 }
@@ -58,7 +49,6 @@ a {
 }
 
 a:hover {
-  text-decoration: underline;
   cursor: pointer;
 }
 
@@ -78,16 +68,7 @@ body {
   min-height: 100vh;
 }
 
-body > main {
-  margin: 0 1rem 1rem 1rem;
-}
-
-section {
-  padding: 1rem 0;
-  @media (min-width: 768px) {
-    padding: 2rem 0;
-  }
-}
+/* main and section spacing is handled per-component with Tailwind utilities */
 
 fieldset {
   display: flex;
@@ -136,4 +117,5 @@ code {
   border-radius: 4px;
   font-family: monospace;
   padding: 0.25rem;
+}
 }

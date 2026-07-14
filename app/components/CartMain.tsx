@@ -32,77 +32,104 @@ function getLineItemChildrenMap(lines: CartLine[]): LineItemChildrenMap {
   }
   return children;
 }
+
 /**
  * The main cart component that displays the cart items and summary.
  * It is used by both the /cart route and the cart aside dialog.
  */
 export function CartMain({layout, cart: originalCart}: CartMainProps) {
-  // The useOptimisticCart hook applies pending actions to the cart
-  // so the user immediately sees feedback when they modify the cart.
+  // useOptimisticCart applies pending actions so the user sees feedback instantly.
   const cart = useOptimisticCart(originalCart);
 
-  const linesCount = Boolean(cart?.lines?.nodes?.length || 0);
-  const withDiscount =
-    cart &&
-    Boolean(cart?.discountCodes?.filter((code) => code.applicable)?.length);
-  const className = `cart-main ${withDiscount ? 'with-discount' : ''}`;
-  const cartHasItems = cart?.totalQuantity ? cart.totalQuantity > 0 : false;
-  const childrenMap = getLineItemChildrenMap(cart?.lines?.nodes ?? []);
+  const lines = cart?.lines?.nodes ?? [];
+  const cartHasItems = (cart?.totalQuantity ?? 0) > 0;
+  const childrenMap = getLineItemChildrenMap(lines);
+  const count = cart?.totalQuantity ?? 0;
 
-  return (
-    <section
-      className={className}
-      aria-label={layout === 'page' ? 'Cart page' : 'Cart drawer'}
-    >
-      <CartEmpty hidden={linesCount} layout={layout} />
-      <div className="cart-details">
-        <p id="cart-lines" className="sr-only">
-          Line items
-        </p>
-        <div>
-          <ul aria-labelledby="cart-lines">
-            {(cart?.lines?.nodes ?? []).map((line) => {
-              // we do not render non-parent lines at the root of the cart
-              if (
-                'parentRelationship' in line &&
-                line.parentRelationship?.parent
-              ) {
-                return null;
-              }
-              return (
-                <CartLineItem
-                  key={line.id}
-                  line={line}
-                  layout={layout}
-                  childrenMap={childrenMap}
-                />
-              );
-            })}
-          </ul>
+  // Only render parent lines at the root of the cart.
+  const rootLines = lines.filter(
+    (line) =>
+      !('parentRelationship' in line && line.parentRelationship?.parent),
+  );
+
+  if (!cartHasItems) {
+    return <CartEmpty />;
+  }
+
+  if (layout === 'page') {
+    return (
+      <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_22rem]">
+        <ul className="space-y-3">
+          {rootLines.map((line) => (
+            <CartLineItem
+              key={line.id}
+              line={line}
+              layout={layout}
+              childrenMap={childrenMap}
+            />
+          ))}
+        </ul>
+        <div className="lg:sticky lg:top-28 lg:self-start">
+          <CartSummary cart={cart} layout={layout} />
         </div>
-        {cartHasItems && <CartSummary cart={cart} layout={layout} />}
       </div>
-    </section>
+    );
+  }
+
+  // Aside (drawer): scrollable line items + sticky summary footer.
+  return (
+    <div className="flex h-full flex-col">
+      <p className="shrink-0 px-5 pt-4 text-sm text-muted">
+        {count} {count === 1 ? 'item' : 'items'} in your cart
+      </p>
+      <ul className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
+        {rootLines.map((line) => (
+          <CartLineItem
+            key={line.id}
+            line={line}
+            layout={layout}
+            childrenMap={childrenMap}
+          />
+        ))}
+      </ul>
+      <CartSummary cart={cart} layout={layout} />
+    </div>
   );
 }
 
-function CartEmpty({
-  hidden = false,
-}: {
-  hidden: boolean;
-  layout?: CartMainProps['layout'];
-}) {
+function CartEmpty() {
   const {close} = useAside();
   return (
-    <div hidden={hidden}>
-      <br />
-      <p>
-        Looks like you haven&rsquo;t added anything yet, let&rsquo;s get you
-        started!
-      </p>
-      <br />
-      <Link to="/collections" onClick={close} prefetch="viewport">
-        Continue shopping →
+    <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
+      <span className="grid h-16 w-16 place-items-center rounded-full bg-mint text-brand-600">
+        <svg
+          viewBox="0 0 24 24"
+          className="h-8 w-8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="9" cy="20" r="1.4" />
+          <circle cx="17.5" cy="20" r="1.4" />
+          <path d="M3 4h2l2.2 11.3a1.5 1.5 0 0 0 1.5 1.2h8a1.5 1.5 0 0 0 1.5-1.2L20 7.5H6" />
+        </svg>
+      </span>
+      <div>
+        <p className="text-lg font-bold text-ink">Your cart is empty</p>
+        <p className="mt-1 text-sm text-muted">
+          Looks like you haven&rsquo;t added anything yet.
+        </p>
+      </div>
+      <Link
+        to="/collections"
+        onClick={close}
+        prefetch="viewport"
+        className="btn btn-dark mt-2"
+      >
+        Start shopping
       </Link>
     </div>
   );

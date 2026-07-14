@@ -80,7 +80,12 @@ export async function action({request, context}: Route.ActionArgs) {
   const redirectTo = formData.get('redirectTo') ?? null;
   if (typeof redirectTo === 'string') {
     status = 303;
-    headers.set('Location', redirectTo);
+    // "Buy it now" adds the line, then goes straight to Shopify checkout.
+    const location =
+      redirectTo === 'checkout' && cartResult?.checkoutUrl
+        ? cartResult.checkoutUrl
+        : redirectTo;
+    headers.set('Location', location);
   }
 
   return data(
