@@ -5,6 +5,14 @@ Shopify **Hydrogen** storefront (React Router 7 / Remix, full SSR) for
 Nike/Off-White-influenced UI in a **light-green** theme, **Inter** font,
 **Tailwind v4**. Local dev runs on **Mock.shop** data.
 
+## ⚠️ Working agreement — always follow
+
+**Ask me first before `git commit`/`git push`, and before running any `wrangler`
+command.** Prepare/edit locally, describe what you'd do, then wait for my
+go-ahead. See **[docs/working-agreement.md](docs/working-agreement.md)**.
+
+@docs/working-agreement.md
+
 ## ⚠️ Design consistency — read before building UI
 
 Before creating or editing **any page, route, or UI component**, read
