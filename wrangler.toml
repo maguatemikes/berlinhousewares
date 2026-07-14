@@ -17,12 +17,15 @@ compatibility_flags = ["nodejs_compat"]
 directory = "./dist/client"
 binding = "ASSETS"
 
-# --- Runtime environment variables (DO NOT hardcode tokens here) ---
-# This file is committed to git, so set the values in the Cloudflare dashboard
-# (Workers & Pages > berlinhousewares > Settings > Variables and Secrets),
-# or via `npx wrangler secret put <NAME>`:
-#   SESSION_SECRET                          (mark as Secret)
-#   PUBLIC_STORE_DOMAIN                      = berlinhousewares-com.myshopify.com
-#   PUBLIC_STOREFRONT_API_TOKEN             = <public storefront token>
-#   PUBLIC_CUSTOMER_ACCOUNT_API_CLIENT_ID   = e0f0d158-9467-4df6-a9b3-1d2be432fcbb
-#   PUBLIC_CUSTOMER_ACCOUNT_API_URL         = https://shopify.com/authentication/71626096792
+# Public (browser-exposed) env vars — safe to commit. `wrangler deploy` (run by
+# Workers Builds) applies ONLY what's here and wipes dashboard-set plain vars,
+# so they must live in this file to survive each deploy.
+[vars]
+PUBLIC_STORE_DOMAIN = "berlinhousewares-com.myshopify.com"
+PUBLIC_STOREFRONT_API_TOKEN = "93f257f7a4678e1bf9f2346816a53f00"
+PUBLIC_CUSTOMER_ACCOUNT_API_CLIENT_ID = "e0f0d158-9467-4df6-a9b3-1d2be432fcbb"
+PUBLIC_CUSTOMER_ACCOUNT_API_URL = "https://shopify.com/authentication/71626096792"
+
+# SESSION_SECRET is a real secret — do NOT put it here. Set it as an encrypted
+# Secret in the dashboard, or `npx wrangler secret put SESSION_SECRET`.
+# Secrets DO persist across `wrangler deploy` (unlike plain dashboard vars).
