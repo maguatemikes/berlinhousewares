@@ -34,9 +34,6 @@ export default defineConfig({
     },
   },
   server: {
-    // Allow Shopify's Hydrogen tunnel plus independent dev tunnels
-    // (cloudflared / ngrok) so Customer Account API OAuth can round-trip
-    // through a public HTTPS host in local development.
-    allowedHosts: ['.tryhydrogen.dev', '.trycloudflare.com', '.ngrok-free.app'],
+    allowedHosts: ['.tryhydrogen.dev'],
   },
 });
