@@ -23,78 +23,44 @@ type Viewport = 'desktop' | 'mobile';
 /* -------------------------------------------------------------------------- */
 /* Nike-style navigation model                                                 */
 /* -------------------------------------------------------------------------- */
-type MegaColumn = {heading: string; links: {label: string; to: string}[]};
 type NavItem = {
   title: string;
   to: string;
   accent?: boolean;
-  mega?: {columns: MegaColumn[]; promo?: {label: string; sub: string; to: string}};
+  children?: {label: string; to: string}[];
 };
 
-const SHOE_LINKS = [
-  {label: 'All Shoes', to: '/collections/all'},
-  {label: 'Lifestyle', to: '/collections'},
-  {label: 'Running', to: '/collections'},
-  {label: 'Training & Gym', to: '/collections'},
-  {label: 'Sandals & Slides', to: '/collections'},
-];
-const CLOTHING_LINKS = [
-  {label: 'All Clothing', to: '/collections/all'},
-  {label: 'Tops & T-Shirts', to: '/collections'},
-  {label: 'Hoodies & Sweatshirts', to: '/collections'},
-  {label: 'Jackets', to: '/collections'},
-  {label: 'Shorts', to: '/collections'},
-];
-const ACCESSORY_LINKS = [
-  {label: 'Bags & Backpacks', to: '/collections'},
-  {label: 'Socks', to: '/collections'},
-  {label: 'Hats & Headwear', to: '/collections'},
-  {label: 'Water Bottles', to: '/collections'},
-];
-
-function categoryMega(who: string): NavItem['mega'] {
-  return {
-    columns: [
-      {
-        heading: 'Featured',
-        links: [
-          {label: 'New Releases', to: '/collections/all'},
-          {label: 'Best Sellers', to: '/collections'},
-          {label: 'Shop All Sale', to: '/collections'},
-          {label: 'Pre-Loved & Consignment', to: '/collections'},
-        ],
-      },
-      {heading: 'Shoes', links: SHOE_LINKS},
-      {heading: 'Clothing', links: CLOTHING_LINKS},
-      {heading: 'Accessories', links: ACCESSORY_LINKS},
-    ],
-    promo: {
-      label: `${who} — Spring Drop`,
-      sub: 'Shop the newest arrivals',
+// Collections-driven nav: a single "Shop" whose dropdown auto-lists every
+// Shopify collection (alphabetical), plus Consign. Create a collection in
+// Shopify and it appears in the Shop dropdown automatically — no code edits.
+function buildNav(
+  collections: ReadonlyArray<{title: string; handle: string}>,
+): NavItem[] {
+  const categories = collections.map((c) => ({
+    label: c.title,
+    to: `/collections/${c.handle}`,
+  }));
+  return [
+    {
+      title: 'Shop',
       to: '/collections/all',
+      children: categories.length ? categories : undefined,
     },
-  };
+    {title: 'Consign', to: '/consign'},
+  ];
 }
-
-const NAV: NavItem[] = [
-  {title: 'Shop', to: '/collections/all'},
-  {title: 'Men', to: '/collections', mega: categoryMega('Men')},
-  {title: 'Women', to: '/collections', mega: categoryMega('Women')},
-  {title: 'Kids', to: '/collections', mega: categoryMega('Kids')},
-  {title: 'Consign', to: '/consign'},
-  {title: 'Sale', to: '/collections', accent: true},
-];
 
 /* -------------------------------------------------------------------------- */
 /* Header                                                                      */
 /* -------------------------------------------------------------------------- */
 export function Header({header, customer, cart}: HeaderProps) {
   const {shop} = header;
+  const nav = buildNav(header.collections?.nodes ?? []);
   return (
     <div className="sticky top-0 z-50">
       <UtilityBar customer={customer} />
 
-      <header className="relative border-b border-black/10 bg-paper">
+      <header className="relative z-20 border-b border-black/10 bg-paper">
         <div className="ui-container flex h-[60px] items-center justify-between gap-4">
           {/* Left: mobile toggle + logo */}
           <div className="flex items-center gap-2">
@@ -115,7 +81,7 @@ export function Header({header, customer, cart}: HeaderProps) {
             role="navigation"
             aria-label="Primary"
           >
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <NavTop key={item.title} item={item} />
             ))}
           </nav>
@@ -269,6 +235,7 @@ function NavTop({item}: {item: NavItem}) {
     <div className="group flex items-stretch">
       <NavLink
         to={item.to}
+        end
         prefetch="intent"
         className={({isActive}) =>
           `relative flex items-center px-1 text-[15px] font-medium transition-colors ${
@@ -281,50 +248,53 @@ function NavTop({item}: {item: NavItem}) {
         {item.title}
       </NavLink>
 
-      {item.mega && (
+      {item.children && item.children.length > 0 && (
         <div className="invisible absolute inset-x-0 top-full opacity-0 transition-[opacity,visibility] duration-150 group-hover:visible group-hover:opacity-100">
           <div className="border-t border-black/10 bg-paper shadow-xl">
-            <div className="ui-container grid grid-cols-5 gap-8 py-8">
-              <div className="col-span-3 grid grid-cols-3 gap-8">
-                {item.mega.columns.map((col) => (
-                  <div key={col.heading}>
-                    <h3 className="mb-3 text-sm font-bold text-ink">
-                      {col.heading}
-                    </h3>
-                    <ul className="space-y-2">
-                      {col.links.map((l) => (
-                        <li key={l.label}>
-                          <Link
-                            to={l.to}
-                            prefetch="intent"
-                            className="text-sm text-muted transition-colors hover:text-ink"
-                          >
-                            {l.label}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
+            <div className="ui-container grid grid-cols-4 gap-8 py-10">
+              {/* Category links */}
+              <div className="col-span-3">
+                <p className="eyebrow mb-5 text-brand-700">Shop by category</p>
+                <ul className="grid grid-cols-3 gap-x-8 gap-y-3">
+                  <li>
+                    <Link
+                      to={item.to}
+                      prefetch="intent"
+                      className="text-[15px] font-semibold text-ink transition-colors hover:text-brand-700"
+                    >
+                      All products
+                    </Link>
+                  </li>
+                  {item.children.map((l) => (
+                    <li key={l.label}>
+                      <Link
+                        to={l.to}
+                        prefetch="intent"
+                        className="text-[15px] font-medium text-muted transition-colors hover:text-ink"
+                      >
+                        {l.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              {item.mega.promo && (
-                <Link
-                  to={item.mega.promo.to}
-                  prefetch="intent"
-                  className="col-span-2 flex flex-col justify-end overflow-hidden rounded-2xl bg-mint p-6 transition-colors hover:bg-mint-deep"
-                >
-                  <span className="eyebrow text-brand-700">Featured</span>
-                  <span className="mt-1 text-xl font-extrabold uppercase leading-tight text-ink">
-                    {item.mega.promo.label}
-                  </span>
-                  <span className="mt-1 text-sm text-muted">
-                    {item.mega.promo.sub}
-                  </span>
-                  <span className="mt-4 inline-flex btn btn-dark !px-4 !py-2 text-sm self-start">
-                    Shop now
-                  </span>
-                </Link>
-              )}
+              {/* Featured tile */}
+              <Link
+                to="/consign"
+                prefetch="intent"
+                className="col-span-1 flex flex-col justify-end overflow-hidden rounded-2xl bg-mint p-6 transition-colors hover:bg-mint-deep"
+              >
+                <span className="eyebrow text-brand-700">Consignment</span>
+                <span className="mt-1 text-xl font-extrabold uppercase leading-tight text-ink">
+                  Sell your pieces
+                </span>
+                <span className="mt-1 text-sm text-muted">
+                  Turn your closet into cash — verified pre-loved.
+                </span>
+                <span className="btn btn-dark mt-4 self-start !px-4 !py-2 text-sm">
+                  Start consigning
+                </span>
+              </Link>
             </div>
           </div>
         </div>
@@ -336,14 +306,19 @@ function NavTop({item}: {item: NavItem}) {
 /* -------------------------------------------------------------------------- */
 /* Mobile menu (used by PageLayout MobileMenuAside)                            */
 /* -------------------------------------------------------------------------- */
-export function HeaderMenu({viewport}: {
+export function HeaderMenu({
+  viewport,
+  collections,
+}: {
   menu?: HeaderProps['header']['menu'];
   primaryDomainUrl?: string;
   viewport: Viewport;
   publicStoreDomain?: string;
+  collections?: ReadonlyArray<{title: string; handle: string}>;
 }) {
   const {close} = useAside();
   if (viewport !== 'mobile') return null;
+  const nav = buildNav(collections ?? []);
 
   return (
     <nav className="flex flex-col gap-1 p-2" role="navigation">
@@ -356,18 +331,34 @@ export function HeaderMenu({viewport}: {
       >
         Home
       </NavLink>
-      {NAV.map((item) => (
-        <NavLink
-          key={item.title}
-          to={item.to}
-          onClick={close}
-          prefetch="intent"
-          className={`${mobileLinkClass} ${
-            item.accent ? '!text-brand-600' : ''
-          }`}
-        >
-          {item.title}
-        </NavLink>
+      {nav.map((item) => (
+        <div key={item.title}>
+          <NavLink
+            to={item.to}
+            onClick={close}
+            prefetch="intent"
+            className={`${mobileLinkClass} ${
+              item.accent ? '!text-brand-600' : ''
+            }`}
+          >
+            {item.title}
+          </NavLink>
+          {item.children && item.children.length > 0 && (
+            <div className="ml-3 flex flex-col border-l border-black/10 pl-2">
+              {item.children.map((l) => (
+                <NavLink
+                  key={l.label}
+                  to={l.to}
+                  onClick={close}
+                  prefetch="intent"
+                  className="block rounded-lg px-3 py-2 text-base font-medium text-muted hover:bg-mint hover:text-ink"
+                >
+                  {l.label}
+                </NavLink>
+              ))}
+            </div>
+          )}
+        </div>
       ))}
     </nav>
   );
@@ -511,9 +502,33 @@ function CartBanner() {
 /* -------------------------------------------------------------------------- */
 function Logo() {
   return (
-    <span className="text-2xl font-extrabold lowercase leading-none tracking-tight text-ink">
-      berlin<span className="text-brand-600">houseware</span>
-    </span>
+    <svg
+      viewBox="0 0 360 82"
+      className="h-8 w-auto md:h-9"
+      role="img"
+      aria-label="Berlin Houseware home"
+    >
+      {/* House roof spanning the "house" letters (x 123→251, aligned to Inter) */}
+      <path
+        d="M123 23 L187 5 L251 23"
+        fill="none"
+        stroke="#37ad57"
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <text
+        id="bh-logo-text"
+        x="6"
+        y="70"
+        fontFamily="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif"
+        fontWeight="800"
+        fontSize="46"
+        letterSpacing="-2.5"
+      >
+        <tspan fill="#101410">berlin</tspan><tspan fill="#37ad57">houseware</tspan>
+      </text>
+    </svg>
   );
 }
 

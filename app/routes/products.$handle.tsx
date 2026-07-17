@@ -17,11 +17,58 @@ import {ProductForm} from '~/components/ProductForm';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
 
 export const meta: Route.MetaFunction = ({data}) => {
+  const product = data?.product;
+  if (!product) {
+    return [{title: 'Product | Berlin Houseware'}];
+  }
+
+  const variant = product.selectedOrFirstAvailableVariant;
+  const title = product.seo?.title || `${product.title} | Berlin Houseware`;
+  const description = (
+    product.seo?.description ||
+    product.description ||
+    `Shop ${product.title} at Berlin Houseware — new & pre-loved streetwear.`
+  )
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 160);
+  const image = variant?.image?.url || product.images?.nodes?.[0]?.url;
+  const url = `/products/${product.handle}`;
+
   return [
-    {title: `Hydrogen | ${data?.product.title ?? ''}`},
+    {title},
+    {name: 'description', content: description},
+    {tagName: 'link', rel: 'canonical', href: url},
+    {property: 'og:type', content: 'product'},
+    {property: 'og:title', content: title},
+    {property: 'og:description', content: description},
+    {property: 'og:url', content: url},
+    ...(image ? [{property: 'og:image', content: image}] : []),
+    {name: 'twitter:card', content: 'summary_large_image'},
+    {name: 'twitter:title', content: title},
+    {name: 'twitter:description', content: description},
+    ...(image ? [{name: 'twitter:image', content: image}] : []),
     {
-      rel: 'canonical',
-      href: `/products/${data?.product.handle}`,
+      'script:ld+json': {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: product.title,
+        description,
+        image: image ? [image] : undefined,
+        brand: {'@type': 'Brand', name: product.vendor || 'Berlin Houseware'},
+        sku: variant?.sku || undefined,
+        offers: variant?.price
+          ? {
+              '@type': 'Offer',
+              priceCurrency: variant.price.currencyCode,
+              price: variant.price.amount,
+              availability: variant.availableForSale
+                ? 'https://schema.org/InStock'
+                : 'https://schema.org/OutOfStock',
+              url,
+            }
+          : undefined,
+      },
     },
   ];
 };
@@ -142,10 +189,14 @@ export default function Product() {
 
   return (
     <div className="ui-container py-8 md:py-12">
-      <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
+      <div className="grid gap-8 lg:grid-cols-[3fr_2fr] lg:gap-12">
         {/* Gallery */}
         <div className="lg:sticky lg:top-28 lg:self-start">
-          <ProductGallery images={galleryImages} title={title} />
+          <ProductGallery
+            images={galleryImages}
+            title={title}
+            activeImageUrl={selectedVariant?.image?.url}
+          />
         </div>
 
         {/* Product info */}
@@ -269,7 +320,7 @@ function Installments({price}: {price?: MoneyV2}) {
     currencyCode: price.currencyCode,
   };
   return (
-    <p className="mt-3 text-sm text-muted">
+    <p className="mt-2 text-sm text-muted">
       Pay in 4 interest-free installments of{' '}
       <Money as="span" data={per} className="font-semibold text-ink" /> with{' '}
       <span className="font-semibold text-brand-700">Shop Pay</span>.
@@ -279,7 +330,7 @@ function Installments({price}: {price?: MoneyV2}) {
 
 function TrustLine() {
   return (
-    <p className="mt-5 flex items-center gap-2 text-xs text-muted">
+    <p className="mt-6 flex items-center gap-2 text-xs text-muted">
       <svg viewBox="0 0 24 24" className="h-4 w-4 text-brand-600" aria-hidden="true">
         <path
           d="m5 13 4 4L19 7"

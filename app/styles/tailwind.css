@@ -41,7 +41,11 @@
   --color-mint: #eef8ef;
   --color-mint-deep: #e0f2e4;
 
-  /* Rounding */
+  /* Rounding — softened corners site-wide (cards/tiles/inputs); buttons,
+     swatches and the search pill stay fully round via --radius-pill. */
+  --radius-xl: 0.5rem; /* 12px → 8px  (small thumbs) */
+  --radius-2xl: 0.75rem; /* 16px → 12px (product cards, inputs) */
+  --radius-3xl: 1rem; /* 24px → 16px (large tiles, gallery, hero) */
   --radius-pill: 9999px;
 }
 
@@ -86,6 +90,8 @@
     gap: 0.5rem;
     border-radius: var(--radius-pill);
     padding: 0.75rem 1.5rem;
+    /* transparent border on every variant so outline/solid share one height */
+    border: 1.5px solid transparent;
     font-size: 0.9375rem;
     font-weight: 600;
     line-height: 1;
@@ -120,7 +126,7 @@
   .btn-outline {
     background: transparent;
     color: var(--color-ink);
-    border: 1.5px solid var(--color-ink);
+    border-color: var(--color-ink);
   }
   .btn-outline:hover {
     background: var(--color-ink);

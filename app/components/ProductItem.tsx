@@ -61,7 +61,9 @@ export function ProductItem({
         <h4 className="text-sm font-bold leading-snug text-ink">
           {product.title}
         </h4>
-        <p className="text-xs text-muted">Berlin Houseware</p>
+        <p className="text-xs text-muted">
+          {product.vendor || 'Berlin Houseware'}
+        </p>
         <div className="mt-1 text-sm font-bold text-brand-700">
           <Money data={product.priceRange.minVariantPrice} />
         </div>

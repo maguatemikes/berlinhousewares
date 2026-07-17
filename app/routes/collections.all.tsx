@@ -220,6 +220,7 @@ const SHOP_QUERY = `#graphql
     id
     handle
     title
+    vendor
     featuredImage {
       id
       altText

@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Image} from '@shopify/hydrogen';
 
 type GalleryImage = {
@@ -12,11 +12,23 @@ type GalleryImage = {
 export function ProductGallery({
   images,
   title,
+  activeImageUrl,
 }: {
   images: GalleryImage[];
   title: string;
+  activeImageUrl?: string | null;
 }) {
   const [active, setActive] = useState(0);
+
+  // When the selected variant changes, jump the gallery to that variant's image.
+  // Only re-runs when the variant image URL changes (not on every images rebuild),
+  // so manually clicking a thumbnail isn't instantly overridden.
+  useEffect(() => {
+    if (!activeImageUrl) return;
+    const idx = images.findIndex((img) => img.url === activeImageUrl);
+    if (idx >= 0) setActive(idx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeImageUrl]);
 
   if (!images.length) {
     return (

@@ -559,6 +559,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     id
     title
     handle
+    vendor
     priceRange {
       minVariantPrice {
         amount

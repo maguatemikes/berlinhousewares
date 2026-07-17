@@ -170,6 +170,7 @@ function MobileMenuAside({
           viewport="mobile"
           primaryDomainUrl={header.shop.primaryDomain.url}
           publicStoreDomain={publicStoreDomain}
+          collections={header.collections?.nodes}
         />
       </Aside>
     )
