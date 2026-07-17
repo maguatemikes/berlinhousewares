@@ -1,4 +1,4 @@
-import {Suspense} from 'react';
+import {Suspense, useEffect, useState} from 'react';
 import {Await, Form, NavLink, Link, useAsyncValue} from 'react-router';
 import {
   type CartViewPayload,
@@ -129,6 +129,8 @@ export function Header({header, customer, cart}: HeaderProps) {
           </div>
         </div>
       </header>
+
+      <AnnouncementBar />
     </div>
   );
 }
@@ -136,6 +138,39 @@ export function Header({header, customer, cart}: HeaderProps) {
 /* -------------------------------------------------------------------------- */
 /* Utility bar                                                                 */
 /* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/* Announcement bar — sits under the nav, retracts on scroll down             */
+/* -------------------------------------------------------------------------- */
+function AnnouncementBar() {
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setCollapsed(window.scrollY > 40);
+    onScroll();
+    window.addEventListener('scroll', onScroll, {passive: true});
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  return (
+    <div
+      aria-hidden={collapsed}
+      className={`overflow-hidden border-b border-black/5 bg-brand-600 text-white transition-[max-height] duration-200 ease-out ${
+        collapsed ? 'max-h-0' : 'max-h-9'
+      }`}
+    >
+      <div className="ui-container flex h-8 items-center justify-center gap-2 text-center text-xs font-semibold tracking-wide">
+        <span>Free shipping on orders over $75</span>
+        <span aria-hidden className="hidden opacity-60 sm:inline">
+          •
+        </span>
+        <span className="hidden sm:inline">
+          Buy &amp; sell verified pre-loved streetwear
+        </span>
+      </div>
+    </div>
+  );
+}
+
 const utilLinkClass = 'text-xs font-medium hover:text-brand-600';
 
 function UtilItem({

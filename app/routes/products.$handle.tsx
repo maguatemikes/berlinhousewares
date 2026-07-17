@@ -153,14 +153,11 @@ export default function Product() {
           {product.vendor && (
             <span className="eyebrow text-brand-700">{product.vendor}</span>
           )}
-          <div className="mt-2 flex items-start justify-between gap-4">
-            <h1 className="text-3xl font-extrabold uppercase leading-tight tracking-tight md:text-4xl">
-              {title}
-            </h1>
-            <Rating value={5.0} />
-          </div>
+          <h1 className="mt-2 text-3xl font-extrabold uppercase leading-tight tracking-tight md:text-4xl">
+            {title}
+          </h1>
 
-          <div className="mt-3">
+          <div className="mt-4">
             <ProductPrice price={lineTotal} compareAtPrice={compareTotal} />
             {quantity > 1 && unitPrice && (
               <p className="mt-1 text-sm text-muted">
@@ -205,6 +202,19 @@ export default function Product() {
                 <li>Ships from Berlin Houseware</li>
               </ul>
             </Accordion>
+            <Accordion title="Reviews (373)" meta={<Stars />}>
+              <div className="flex items-center gap-4">
+                <div className="text-4xl font-extrabold leading-none text-ink">
+                  5.0
+                </div>
+                <div>
+                  <Stars />
+                  <p className="mt-1 text-xs text-muted">
+                    Based on 373 verified reviews
+                  </p>
+                </div>
+              </div>
+            </Accordion>
           </div>
         </div>
       </div>
@@ -227,16 +237,27 @@ export default function Product() {
   );
 }
 
-function Rating({value}: {value: number}) {
+function Stars({count = 5}: {count?: number}) {
   return (
-    <span className="mt-1 flex shrink-0 items-center gap-1 text-sm font-semibold text-ink">
-      <svg viewBox="0 0 24 24" className="h-4 w-4 text-brand-500" aria-hidden="true">
-        <path
-          d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7L12 2z"
-          fill="currentColor"
-        />
-      </svg>
-      {value.toFixed(1)}
+    <span
+      className="flex items-center gap-0.5 text-brand-500"
+      aria-label={`${count} out of 5 stars`}
+    >
+      {Array.from({length: 5}).map((_, i) => (
+        <svg
+          key={i}
+          viewBox="0 0 24 24"
+          className="h-4 w-4"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7L12 2z"
+            fill={i < count ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            strokeWidth="1.5"
+          />
+        </svg>
+      ))}
     </span>
   );
 }
@@ -279,26 +300,31 @@ function Accordion({
   title,
   children,
   defaultOpen = false,
+  meta,
 }: {
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  meta?: React.ReactNode;
 }) {
   return (
     <details className="group border-b border-black/10" open={defaultOpen}>
       <summary className="flex cursor-pointer list-none items-center justify-between py-4 text-base font-semibold text-ink">
-        {title}
-        <span className="text-brand-600 transition-transform group-open:rotate-180">
-          <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-            <path
-              d="m6 9 6 6 6-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+        <span>{title}</span>
+        <span className="flex items-center gap-3">
+          {meta}
+          <span className="text-brand-600 transition-transform group-open:rotate-180">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+              <path
+                d="m6 9 6 6 6-6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
         </span>
       </summary>
       <div className="pb-5">{children}</div>

@@ -55,11 +55,6 @@ export function ProductItem({
             />
           </svg>
         </span>
-
-        {/* Quick view bar */}
-        <span className="absolute inset-x-3 bottom-3 translate-y-3 rounded-pill bg-ink py-2.5 text-center text-sm font-semibold text-white opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
-          View product
-        </span>
       </div>
 
       <div className="mt-3 px-1">

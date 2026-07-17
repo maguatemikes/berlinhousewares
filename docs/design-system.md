@@ -11,6 +11,42 @@ Off-White influence — bold, lots of whitespace, pill buttons — recolored to 
 
 ---
 
+## 0. Core design principles (apply on every screen)
+
+These govern **all** UI work here, layered on top of the specific tokens and
+components below. The goal: a modern, premium, uncluttered interface where every
+screen feels like the same product. Follow modern UI/UX best practices —
+
+- **Repetition = cohesion.** Reuse the *same* spacing, type scale, colors, radii,
+  `.btn-*`, iconography, and component patterns everywhere. Never invent a new
+  variant when an existing primitive fits — sameness across screens is the goal,
+  not variety. This reinforces familiarity and reduces cognitive load.
+- **One consistent spacing system.** Stay on the Tailwind 4/8px scale. Section
+  rhythm is `py-16 md:py-24` (thin strips `py-8`); card padding, gaps, and margins
+  should repeat, not be ad-hoc. Align everything to a clean grid with a balanced
+  vertical rhythm.
+- **Proximity & grouping.** Group related elements tightly; separate unrelated
+  sections with generous whitespace. Spacing itself communicates relationships.
+- **Clear visual hierarchy.** Guide attention with size, weight, spacing, and
+  contrast. **One** clear primary action per view (dark pill CTA); secondary
+  actions stay quieter (outline/ghost). Rank content with the type scale
+  (eyebrow → body → `h2` → `h1`).
+- **Generous white space.** Lean uncluttered and premium — when unsure, add space,
+  not elements. Let content breathe.
+- **Scannable & predictable.** Reusable, repeating section shapes so pages are easy
+  to scan and users build familiarity. Every section speaks the same design
+  language.
+- **Readability.** Comfortable line length, `text-muted` for secondary copy,
+  sufficient contrast. Clarity over cleverness.
+- **Accessibility.** Real semantics, visible focus states, `aria-label`s on
+  icon-only controls, adequate contrast, keyboard operability — never rely on
+  color alone.
+
+A newly built screen should be indistinguishable in *language* from the rest of
+the site: same spacing, same buttons, same rhythm, same patterns.
+
+---
+
 ## 1. Stack & architecture
 
 - **Hydrogen** on **React Router 7 (Remix)** — full SSR. Keep the standard
