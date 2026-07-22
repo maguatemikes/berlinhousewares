@@ -87,9 +87,14 @@ export async function action({request, context}: Route.ActionArgs) {
     return new Response('Invalid signature', {status: 401});
   }
 
-  const topic = request.headers.get('X-Shopify-Topic') ?? '';
+  // Topic arrives as "products/update" (REST style) or "PRODUCTS_UPDATE"
+  // (GraphQL-enum style, seen from admin-created webhooks) — normalize both.
+  const rawTopic = request.headers.get('X-Shopify-Topic') ?? '';
+  const topic = rawTopic.toLowerCase().replace(/_/g, '/');
+  console.log(`[webhooks.products] received topic "${rawTopic}"`);
   if (topic !== 'products/create' && topic !== 'products/update') {
-    return new Response(`Ignored topic: ${topic}`, {status: 200});
+    console.log(`[webhooks.products] ignored topic "${rawTopic}"`);
+    return new Response(`Ignored topic: ${rawTopic}`, {status: 200});
   }
 
   const product = JSON.parse(rawBody) as {
