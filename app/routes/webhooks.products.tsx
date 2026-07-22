@@ -24,14 +24,12 @@ import {getConsignorForSku} from '~/lib/resaleos.server';
  * app/lib/shopify-admin.server.ts.
  */
 
-// Webhooks are signed with the app's client secret (HMAC-SHA256 of the raw
-// body, base64). Verify BEFORE parsing/acting — anyone can POST to this URL.
-async function verifyShopifyHmac(
-  rawBody: string,
-  hmacHeader: string | null,
-  secret: string,
-): Promise<boolean> {
-  if (!hmacHeader) return false;
+// Webhooks are signed with HMAC-SHA256 of the raw body (base64). WHICH secret
+// depends on how the subscription was created:
+//   • App-config subscriptions → the app's client secret
+//   • Admin "Settings → Notifications → Webhooks" → the STORE signing secret
+// We accept either. Verify BEFORE parsing/acting — anyone can POST to this URL.
+async function hmacBase64(rawBody: string, secret: string): Promise<string> {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',
@@ -41,20 +39,40 @@ async function verifyShopifyHmac(
     ['sign'],
   );
   const sig = await crypto.subtle.sign('HMAC', key, enc.encode(rawBody));
-  const digest = btoa(String.fromCharCode(...new Uint8Array(sig)));
-  // Constant-time compare
-  if (digest.length !== hmacHeader.length) return false;
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
   let diff = 0;
-  for (let i = 0; i < digest.length; i++) {
-    diff |= digest.charCodeAt(i) ^ hmacHeader.charCodeAt(i);
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   }
   return diff === 0;
+}
+
+async function verifyShopifyHmac(
+  rawBody: string,
+  hmacHeader: string | null,
+  secrets: Array<string | undefined>,
+): Promise<boolean> {
+  if (!hmacHeader) return false;
+  for (const secret of secrets) {
+    if (!secret) continue;
+    const digest = await hmacBase64(rawBody, secret);
+    if (timingSafeEqual(digest, hmacHeader)) return true;
+  }
+  return false;
 }
 
 export async function action({request, context}: Route.ActionArgs) {
   const env = context.env as AdminEnv;
 
-  if (!hasAdminToken(env) || !env.PRIVATE_ADMIN_CLIENT_SECRET) {
+  const signingSecrets = [
+    env.PRIVATE_ADMIN_CLIENT_SECRET,
+    env.PRIVATE_WEBHOOK_SECRET,
+  ];
+  if (!hasAdminToken(env) || !signingSecrets.some(Boolean)) {
     // Not configured — acknowledge so Shopify doesn't retry forever.
     return new Response('Webhook not configured', {status: 200});
   }
@@ -63,7 +81,7 @@ export async function action({request, context}: Route.ActionArgs) {
   const valid = await verifyShopifyHmac(
     rawBody,
     request.headers.get('X-Shopify-Hmac-Sha256'),
-    env.PRIVATE_ADMIN_CLIENT_SECRET,
+    signingSecrets,
   );
   if (!valid) {
     return new Response('Invalid signature', {status: 401});

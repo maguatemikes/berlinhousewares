@@ -18,6 +18,8 @@ declare global {
     PRIVATE_ADMIN_CLIENT_SECRET?: string;
     /** Gate for /admin/sync-sellers — without a matching ?key= the route 404s. */
     PRIVATE_SYNC_SECRET?: string;
+    /** Store webhook signing secret (Settings → Notifications → Webhooks). */
+    PRIVATE_WEBHOOK_SECRET?: string;
   }
 }
 
@@ -34,6 +36,8 @@ export type AdminEnv = {
   PRIVATE_RESALEOS_API_KEY?: string;
   /** Gate for /admin/sync-sellers. */
   PRIVATE_SYNC_SECRET?: string;
+  /** Store webhook signing secret — admin-created webhooks are signed with this. */
+  PRIVATE_WEBHOOK_SECRET?: string;
 };
 
 export function hasAdminToken(env: AdminEnv): boolean {
