@@ -45,12 +45,12 @@ export type SellerSummary = {
   initial: string;
   logoUrl: string | null;
   verified: boolean;
+  bio: string | null; // plain text extracted from the rich-text field
   productCount: number;
   previewImages: Array<{url: string; altText: string | null}>;
 };
 
 export type SellerDetail = SellerSummary & {
-  bio: string | null;
   products: SellerProduct[];
 };
 
@@ -59,6 +59,27 @@ export type SellerSort = 'default' | 'price-asc' | 'price-desc' | 'title';
 function initialOf(name: string): string {
   const c = name.trim().charAt(0).toUpperCase();
   return /[A-Z0-9]/.test(c) ? c : '•';
+}
+
+/**
+ * Metaobject rich-text fields store a JSON AST ({type:'root',children:[…]}).
+ * Extract readable plain text; pass plain strings through unchanged.
+ */
+function richTextToPlain(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('{')) return trimmed || null;
+  try {
+    const walk = (node: {value?: string; children?: unknown[]}): string =>
+      [node.value ?? '', ...(node.children ?? []).map((c) => walk(c as never))]
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const text = walk(JSON.parse(trimmed) as never);
+    return text || null;
+  } catch {
+    return null;
+  }
 }
 
 type Scanned = {
@@ -137,10 +158,11 @@ function toSummary(s: Scanned): SellerSummary {
     initial: initialOf(s.name),
     logoUrl: s.logoUrl,
     verified: s.verified,
+    bio: richTextToPlain(s.bio),
     productCount: s.products.length,
     previewImages: s.products
       .filter((p) => p.featuredImage?.url)
-      .slice(0, 3)
+      .slice(0, 5)
       .map((p) => ({
         url: p.featuredImage!.url,
         altText: p.featuredImage!.altText,
@@ -180,7 +202,7 @@ export async function getSeller(
     products.sort((a, b) => a.title.localeCompare(b.title));
   }
 
-  return {...toSummary(s), bio: s.bio, products};
+  return {...toSummary(s), products};
 }
 
 const SELLER_SCAN_QUERY = `#graphql

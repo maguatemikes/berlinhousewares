@@ -1,5 +1,5 @@
-import {useState} from 'react';
-import {Link, redirect, useLoaderData} from 'react-router';
+import {useEffect, useState} from 'react';
+import {Link, redirect, useLoaderData, useRevalidator} from 'react-router';
 import type {Route} from './+types/products.$handle';
 import {sellerHandle} from '~/lib/sellers';
 import {
@@ -150,6 +150,31 @@ export default function Product() {
 
   // Quantity is shared so the displayed price reflects the selected amount.
   const [quantity, setQuantity] = useState(1);
+
+  // Seller state for the eyebrow: linked → link; fresh + unlinked → "syncing".
+  const sellerRef = product.seller?.reference;
+  const SYNC_WINDOW_MS = 15 * 60 * 1000;
+  const sellerSyncing =
+    !sellerRef &&
+    Boolean(
+      product.createdAt &&
+        Date.now() - new Date(product.createdAt).getTime() < SYNC_WINDOW_MS,
+    );
+
+  // While "Seller syncing…" shows, quietly re-fetch route data every 20s so
+  // the state flips to the seller link on its own when the sweep lands —
+  // no manual refresh. Stops once linked, when the window lapses, or when
+  // the tab is hidden.
+  const revalidator = useRevalidator();
+  useEffect(() => {
+    if (!sellerSyncing) return;
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible' && revalidator.state === 'idle') {
+        void revalidator.revalidate();
+      }
+    }, 20_000);
+    return () => clearInterval(id);
+  }, [sellerSyncing, revalidator]);
   const unitPrice = selectedVariant?.price;
   const unitCompareAt = selectedVariant?.compareAtPrice;
   const lineTotal: MoneyV2 | undefined = unitPrice
@@ -202,37 +227,24 @@ export default function Product() {
 
         {/* Product info */}
         <div className="lg:py-2">
-          {(() => {
-            // The eyebrow slot belongs to the SELLER exclusively (the brand
-            // lives under the title). Three honest states:
-            //   linked            → seller link
-            //   fresh + unlinked  → "Seller syncing…" (webhook hasn't run yet)
-            //   old + unlinked    → nothing (never assigned — no fake states)
-            const ref = product.seller?.reference;
-            if (ref) {
-              const slug = ref.slug?.value?.trim() || ref.handle;
-              const label = ref.displayName?.value?.trim() || product.vendor;
-              return (
-                <Link
-                  to={`/sellers/${sellerHandle(slug)}`}
-                  prefetch="intent"
-                  className="eyebrow text-brand-700 underline-offset-4 transition-colors hover:text-brand-800 hover:underline"
-                >
-                  {label}
-                </Link>
-              );
-            }
-            const SYNC_WINDOW_MS = 15 * 60 * 1000;
-            const isFresh =
-              product.createdAt &&
-              Date.now() - new Date(product.createdAt).getTime() <
-                SYNC_WINDOW_MS;
-            return isFresh ? (
-              <span className="eyebrow animate-pulse text-muted">
-                Seller syncing…
-              </span>
-            ) : null;
-          })()}
+          {/* Eyebrow = SELLER slot only (brand lives under the title).
+              linked → link · fresh+unlinked → syncing (self-refreshing) ·
+              old+unlinked → nothing. State computed above with the poller. */}
+          {sellerRef ? (
+            <Link
+              to={`/sellers/${sellerHandle(
+                sellerRef.slug?.value?.trim() || sellerRef.handle,
+              )}`}
+              prefetch="intent"
+              className="eyebrow text-brand-700 underline-offset-4 transition-colors hover:text-brand-800 hover:underline"
+            >
+              {sellerRef.displayName?.value?.trim() || product.vendor}
+            </Link>
+          ) : sellerSyncing ? (
+            <span className="eyebrow animate-pulse text-muted">
+              Seller syncing…
+            </span>
+          ) : null}
           <h1 className="mt-2 text-3xl font-extrabold uppercase leading-tight tracking-tight md:text-4xl">
             {title}
           </h1>
