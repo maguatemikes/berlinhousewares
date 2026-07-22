@@ -4,6 +4,7 @@ import {
   hasAdminToken,
   ensureSeller,
   setProductSeller,
+  getProductSellerId,
   type AdminEnv,
 } from '~/lib/shopify-admin.server';
 import {getConsignorForSku} from '~/lib/resaleos.server';
@@ -144,6 +145,18 @@ export async function action({request, context}: Route.ActionArgs) {
       slug,
       displayName,
     });
+    // Echo-loop guard: linking fires its own products/update; when that echo
+    // arrives the product already points at the right seller — skip the write
+    // so the chain terminates with zero mutations.
+    const current = await getProductSellerId(env, productGid);
+    if (current === sellerId) {
+      console.log(
+        `[webhooks.products] ${topic} "${product.title}": already linked → ${slug} (skipped)`,
+      );
+      return new Response(`Already linked "${product.title}" → ${slug}`, {
+        status: 200,
+      });
+    }
     await setProductSeller(env, productGid, sellerId);
     console.log(
       `[webhooks.products] ${topic} "${product.title}": ${created ? 'created seller + ' : ''}linked → ${slug}`,
