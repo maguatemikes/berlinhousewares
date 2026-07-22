@@ -30,7 +30,10 @@ import {getConsignorForSku} from '~/lib/resaleos.server';
 //   • App-config subscriptions → the app's client secret
 //   • Admin "Settings → Notifications → Webhooks" → the STORE signing secret
 // We accept either. Verify BEFORE parsing/acting — anyone can POST to this URL.
-async function hmacBase64(rawBody: string, secret: string): Promise<string> {
+async function hmacBase64(
+  bodyBytes: ArrayBuffer,
+  secret: string,
+): Promise<string> {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',
@@ -39,7 +42,9 @@ async function hmacBase64(rawBody: string, secret: string): Promise<string> {
     false,
     ['sign'],
   );
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(rawBody));
+  // Sign the RAW bytes as received — re-encoding decoded text can differ from
+  // what Shopify signed and break verification.
+  const sig = await crypto.subtle.sign('HMAC', key, bodyBytes);
   return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
@@ -53,14 +58,14 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 async function verifyShopifyHmac(
-  rawBody: string,
+  bodyBytes: ArrayBuffer,
   hmacHeader: string | null,
   secrets: Array<string | undefined>,
 ): Promise<boolean> {
   if (!hmacHeader) return false;
   for (const secret of secrets) {
     if (!secret) continue;
-    const digest = await hmacBase64(rawBody, secret);
+    const digest = await hmacBase64(bodyBytes, secret);
     if (timingSafeEqual(digest, hmacHeader)) return true;
   }
   return false;
@@ -75,18 +80,23 @@ export async function action({request, context}: Route.ActionArgs) {
   ];
   if (!hasAdminToken(env) || !signingSecrets.some(Boolean)) {
     // Not configured — acknowledge so Shopify doesn't retry forever.
+    console.log('[webhooks.products] not configured — no admin creds/secrets');
     return new Response('Webhook not configured', {status: 200});
   }
 
-  const rawBody = await request.text();
+  const bodyBytes = await request.arrayBuffer();
   const valid = await verifyShopifyHmac(
-    rawBody,
+    bodyBytes,
     request.headers.get('X-Shopify-Hmac-Sha256'),
     signingSecrets,
   );
   if (!valid) {
+    console.log(
+      `[webhooks.products] INVALID SIGNATURE (topic ${request.headers.get('X-Shopify-Topic')}, ${bodyBytes.byteLength} bytes)`,
+    );
     return new Response('Invalid signature', {status: 401});
   }
+  const rawBody = new TextDecoder().decode(bodyBytes);
 
   // Topic arrives as "products/update" (REST style) or "PRODUCTS_UPDATE"
   // (GraphQL-enum style, seen from admin-created webhooks) — normalize both.
