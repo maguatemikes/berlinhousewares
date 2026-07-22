@@ -1,5 +1,15 @@
-import {Form, useActionData, useNavigation} from 'react-router';
 import type {Route} from './+types/consign';
+
+/**
+ * Consignor signup/management lives in the ResaleOS portal — we link out to it
+ * rather than collecting submissions here, so there's a single source of truth.
+ *
+ * The QR at `public/consignor-portal-qr.svg` encodes this same URL. If it
+ * changes, regenerate the QR too:
+ *   npx qrcode -o public/consignor-portal-qr.svg "<new url>"
+ */
+const PORTAL_REGISTER_URL =
+  'https://www.resaleos.co/s/powered-by/portal/register';
 
 export const meta: Route.MetaFunction = () => {
   return [
@@ -12,70 +22,25 @@ export const meta: Route.MetaFunction = () => {
   ];
 };
 
-type ActionResponse = {
-  ok: boolean;
-  errors?: Record<string, string>;
-  values?: Record<string, string>;
-};
-
-export async function action({request}: Route.ActionArgs) {
-  const form = await request.formData();
-  const get = (k: string) => String(form.get(k) ?? '').trim();
-
-  const values = {
-    name: get('name'),
-    email: get('email'),
-    category: get('category'),
-    brand: get('brand'),
-    itemTitle: get('itemTitle'),
-    condition: get('condition'),
-    price: get('price'),
-    description: get('description'),
-  };
-
-  const errors: Record<string, string> = {};
-  if (!values.name) errors.name = 'Please tell us your name.';
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(values.email))
-    errors.email = 'Enter a valid email address.';
-  if (!values.itemTitle) errors.itemTitle = 'What are you selling?';
-  if (!values.category) errors.category = 'Pick a category.';
-  if (!values.condition) errors.condition = 'Select the condition.';
-  if (values.price && Number.isNaN(Number(values.price)))
-    errors.price = 'Price must be a number.';
-
-  if (Object.keys(errors).length) {
-    return {ok: false, errors, values} satisfies ActionResponse;
-  }
-
-  // In production this would create a Shopify metaobject / draft submission
-  // or hand off to a consignment app. Here we accept and confirm the request.
-  return {ok: true} satisfies ActionResponse;
-}
-
 export default function Consign() {
-  const data = useActionData<typeof action>();
-  const nav = useNavigation();
-  const submitting = nav.state !== 'idle';
-  const errors: Record<string, string> = data?.errors ?? {};
-  const values: Record<string, string> = data?.values ?? {};
-
   return (
     <div className="bg-paper">
       <ConsignHero />
       <HowItWorks />
       <PayoutTiers />
 
-      {/* Submission form */}
-      <section id="submit" className="bg-mint py-16">
-        <div className="ui-container grid gap-10 lg:grid-cols-[1fr_1.2fr]">
+      {/* Consignor portal CTA */}
+      <section id="submit" className="bg-mint">
+        <div className="ui-container grid gap-10 py-16 md:py-24 lg:grid-cols-[1fr_1fr]">
           <div>
             <span className="eyebrow text-brand-700">Start selling</span>
             <h2 className="mt-3 text-4xl font-extrabold uppercase leading-tight tracking-tight md:text-5xl">
-              Submit an item
+              Create your seller account
             </h2>
             <p className="mt-4 max-w-md text-muted">
-              Tell us what you&apos;ve got. Our team reviews every submission
-              within 48 hours and sends a prepaid shipping label once approved.
+              Consignors manage everything in our seller portal — submit items,
+              track what sells, and cash out. Create an account to get started;
+              our team reviews every submission within 48 hours.
             </p>
             <ul className="mt-8 space-y-4">
               {[
@@ -84,7 +49,7 @@ export default function Consign() {
                 'Track your sales, cash out or store credit',
               ].map((t) => (
                 <li key={t} className="flex items-center gap-3 text-sm">
-                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-500 text-[#06210f]">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-700 text-white">
                     <svg viewBox="0 0 24 24" className="h-4 w-4">
                       <path
                         d="m5 13 4 4L19 7"
@@ -102,111 +67,7 @@ export default function Consign() {
             </ul>
           </div>
 
-          <div className="rounded-3xl bg-paper p-6 shadow-sm ring-1 ring-black/5 md:p-8">
-            {data?.ok ? (
-              <SuccessCard />
-            ) : (
-              <Form method="post" className="!max-w-none space-y-4" replace>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field
-                    label="Full name"
-                    name="name"
-                    defaultValue={values.name}
-                    error={errors.name}
-                    placeholder="Alex Green"
-                  />
-                  <Field
-                    label="Email"
-                    name="email"
-                    type="email"
-                    defaultValue={values.email}
-                    error={errors.email}
-                    placeholder="you@email.com"
-                  />
-                </div>
-                <Field
-                  label="Item title"
-                  name="itemTitle"
-                  defaultValue={values.itemTitle}
-                  error={errors.itemTitle}
-                  placeholder="Stoneware dinner set — 12 piece"
-                />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <SelectField
-                    label="Category"
-                    name="category"
-                    defaultValue={values.category}
-                    error={errors.category}
-                    options={[
-                      'Kitchen & Dining',
-                      'Décor',
-                      'Lighting',
-                      'Glassware & Ceramics',
-                      'Small Furniture',
-                      'Home Accessories',
-                    ]}
-                  />
-                  <Field
-                    label="Brand"
-                    name="brand"
-                    defaultValue={values.brand}
-                    placeholder="e.g. HAY, IKEA, vintage"
-                  />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <SelectField
-                    label="Condition"
-                    name="condition"
-                    defaultValue={values.condition}
-                    error={errors.condition}
-                    options={[
-                      'New with tags',
-                      'Like new',
-                      'Gently used',
-                      'Well loved',
-                    ]}
-                  />
-                  <Field
-                    label="Asking price (USD)"
-                    name="price"
-                    type="text"
-                    inputMode="decimal"
-                    defaultValue={values.price}
-                    error={errors.price}
-                    placeholder="120"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="description"
-                    className="mb-1 block text-sm font-semibold text-ink"
-                  >
-                    Description{' '}
-                    <span className="font-normal text-muted">(optional)</span>
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    rows={4}
-                    defaultValue={values.description}
-                    placeholder="Size, colorway, flaws, story…"
-                    className="!mt-0 !mb-0 w-full rounded-2xl !border-black/15 bg-white px-4 py-3 text-sm text-ink outline-none focus:!border-brand-500"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="btn btn-dark w-full disabled:opacity-60"
-                >
-                  {submitting ? 'Submitting…' : 'Submit for review'}
-                </button>
-                <p className="text-center text-xs text-muted">
-                  By submitting you agree to Berlin Houseware&apos;s consignment
-                  terms.
-                </p>
-              </Form>
-            )}
-          </div>
+          <PortalCard />
         </div>
       </section>
 
@@ -251,7 +112,7 @@ function HowItWorks() {
     {
       n: '01',
       t: 'Snap & send',
-      d: 'Send a few photos and details — or drop it off. That’s your part.',
+      d: 'Create your seller account, add a few photos and details — or drop it off. That’s your part.',
     },
     {
       n: '02',
@@ -303,7 +164,7 @@ function PayoutTiers() {
   ];
   return (
     <section className="ui-container pb-4">
-      <div className="grid gap-4 rounded-3xl bg-brand-500 p-8 text-[#06210f] md:grid-cols-3 md:p-10">
+      <div className="grid gap-4 rounded-3xl bg-brand-700 p-8 text-white md:grid-cols-3 md:p-10">
         {tiers.map((t) => (
           <div key={t.price} className="text-center">
             <p className="text-sm font-semibold uppercase tracking-wide">
@@ -326,7 +187,7 @@ function Faq() {
     },
     {
       q: 'How is my item priced?',
-      a: 'We price based on brand, condition, and current demand. You can suggest an asking price on the form.',
+      a: 'We price based on brand, condition, and current demand. You can suggest an asking price when you submit an item in the seller portal.',
     },
     {
       q: 'When and how do I get paid?',
@@ -366,112 +227,54 @@ function Faq() {
   );
 }
 
-function SuccessCard() {
+function PortalCard() {
   return (
-    <div className="grid place-items-center gap-4 py-12 text-center">
-      <span className="grid h-16 w-16 place-items-center rounded-full bg-brand-500 text-[#06210f]">
-        <svg viewBox="0 0 24 24" className="h-8 w-8">
+    <div className="flex flex-col justify-center rounded-3xl bg-paper p-8 text-center shadow-sm ring-1 ring-black/5 md:p-10">
+      <span className="eyebrow text-brand-700">Consignor portal</span>
+      <h3 className="mt-3 text-2xl font-extrabold uppercase tracking-tight">
+        Register to consign
+      </h3>
+      <p className="mx-auto mt-3 max-w-sm text-sm text-muted">
+        Create your consignor account to submit items, follow every sale, and
+        cash out — all in one place.
+      </p>
+
+      <a
+        href={PORTAL_REGISTER_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn btn-dark mx-auto mt-8"
+      >
+        Create seller account
+        <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
           <path
-            d="m5 13 4 4L19 7"
+            d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"
             fill="none"
             stroke="currentColor"
-            strokeWidth="3"
+            strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
         </svg>
-      </span>
-      <h3 className="text-2xl font-extrabold uppercase">Submission received</h3>
-      <p className="max-w-sm text-muted">
-        Thanks! Our team will review your item and email you within 48 hours
-        with next steps and a prepaid shipping label.
-      </p>
-      <a href="/collections" className="btn btn-outline mt-2">
-        Keep shopping
       </a>
+
+      <p className="mt-3 text-xs text-muted">
+        Opens our seller portal in a new tab.
+      </p>
+
+      <div className="mt-8 border-t border-black/10 pt-6">
+        <img
+          src="/consignor-portal-qr.svg"
+          alt="QR code that opens the Berlin Houseware consignor portal"
+          width="144"
+          height="144"
+          className="mx-auto h-36 w-36 rounded-2xl ring-1 ring-black/5"
+        />
+        <p className="mt-3 text-xs text-muted">
+          Or scan to sign up and log in from your phone
+        </p>
+      </div>
     </div>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Form fields                                                                 */
-/* -------------------------------------------------------------------------- */
-function Field({
-  label,
-  name,
-  error,
-  type = 'text',
-  ...rest
-}: {
-  label: string;
-  name: string;
-  error?: string;
-  type?: string;
-  defaultValue?: string;
-  placeholder?: string;
-  inputMode?: 'decimal' | 'text';
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="mb-1 block text-sm font-semibold text-ink"
-      >
-        {label}
-      </label>
-      <input
-        id={name}
-        name={name}
-        type={type}
-        className={`!mt-0 !mb-0 w-full rounded-2xl bg-white px-4 py-3 text-sm text-ink outline-none focus:!border-brand-500 ${
-          error ? '!border-red-500' : '!border-black/15'
-        }`}
-        {...rest}
-      />
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-    </div>
-  );
-}
-
-function SelectField({
-  label,
-  name,
-  error,
-  options,
-  defaultValue,
-}: {
-  label: string;
-  name: string;
-  error?: string;
-  options: string[];
-  defaultValue?: string;
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="mb-1 block text-sm font-semibold text-ink"
-      >
-        {label}
-      </label>
-      <select
-        id={name}
-        name={name}
-        defaultValue={defaultValue || ''}
-        className={`!mt-0 !mb-0 w-full rounded-2xl border bg-white px-4 py-3 text-sm text-ink outline-none focus:!border-brand-500 ${
-          error ? '!border-red-500' : '!border-black/15'
-        }`}
-      >
-        <option value="" disabled>
-          Select…
-        </option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-    </div>
-  );
-}

@@ -62,7 +62,7 @@ export function Footer({
                   key={s.label}
                   href={s.href}
                   aria-label={s.label}
-                  className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-brand-500 hover:text-ink"
+                  className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-brand-600 hover:text-white"
                 >
                   {s.icon}
                 </a>

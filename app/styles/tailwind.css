@@ -115,12 +115,14 @@
     background: var(--color-brand-600);
   }
 
+  /* Green surfaces carry WHITE text — brand-700 keeps it AA (6.26:1).
+     Hover goes darker so the label stays readable. */
   .btn-brand {
-    background: var(--color-brand-500);
-    color: #06210f;
+    background: var(--color-brand-700);
+    color: var(--color-paper);
   }
   .btn-brand:hover {
-    background: var(--color-brand-400);
+    background: var(--color-brand-800);
   }
 
   .btn-outline {

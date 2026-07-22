@@ -500,8 +500,8 @@ function ConsignBand() {
 /* -------------------------------------------------------------------------- */
 function NewsletterBand() {
   return (
-    <section className="bg-brand-500">
-      <div className="ui-container flex flex-col items-center gap-6 py-16 text-center text-[#06210f] md:py-24">
+    <section className="bg-brand-700">
+      <div className="ui-container flex flex-col items-center gap-6 py-16 text-center text-white md:py-24">
         <h2 className="max-w-2xl text-3xl font-extrabold uppercase tracking-tight md:text-4xl">
           Join the movement. Get first access to drops.
         </h2>
@@ -514,13 +514,13 @@ function NewsletterBand() {
             required
             placeholder="Enter your email"
             aria-label="Email address"
-            className="!mt-0 !mb-0 w-full flex-1 rounded-pill !border-[#06210f]/20 bg-white px-5 py-3 text-ink"
+            className="!mt-0 !mb-0 w-full flex-1 rounded-pill !border-white/25 bg-white px-5 py-3 text-ink"
           />
           <button type="submit" className="btn btn-dark">
             Sign up
           </button>
         </form>
-        <p className="text-xs text-[#06210f]/70">
+        <p className="text-xs text-white/80">
           By signing up you agree to our Terms &amp; Privacy Policy.
         </p>
       </div>

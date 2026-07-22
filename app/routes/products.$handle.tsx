@@ -1,6 +1,7 @@
 import {useState} from 'react';
-import {redirect, useLoaderData} from 'react-router';
+import {Link, redirect, useLoaderData} from 'react-router';
 import type {Route} from './+types/products.$handle';
+import {sellerHandle} from '~/lib/sellers';
 import {
   getSelectedProductOptions,
   Analytics,
@@ -201,12 +202,38 @@ export default function Product() {
 
         {/* Product info */}
         <div className="lg:py-2">
-          {product.vendor && (
-            <span className="eyebrow text-brand-700">{product.vendor}</span>
-          )}
+          {(() => {
+            // Prefer the assigned seller (metaobject) — its slug is the stable
+            // store URL and display_name the shown label. Fall back to the plain
+            // vendor text (no link) when a product hasn't been tagged to a seller.
+            const ref = product.seller?.reference;
+            if (ref) {
+              const slug = ref.slug?.value?.trim() || ref.handle;
+              const label = ref.displayName?.value?.trim() || product.vendor;
+              return (
+                <Link
+                  to={`/sellers/${sellerHandle(slug)}`}
+                  prefetch="intent"
+                  className="eyebrow text-brand-700 underline-offset-4 transition-colors hover:text-brand-800 hover:underline"
+                >
+                  {label}
+                </Link>
+              );
+            }
+            return product.vendor ? (
+              <span className="eyebrow text-brand-700">{product.vendor}</span>
+            ) : null;
+          })()}
           <h1 className="mt-2 text-3xl font-extrabold uppercase leading-tight tracking-tight md:text-4xl">
             {title}
           </h1>
+          {/* Brand under the title — only when a seller owns the eyebrow (no
+              duplication) and the vendor is a real brand, not the store default. */}
+          {product.seller?.reference &&
+            product.vendor &&
+            !product.vendor.toLowerCase().includes('berlinhouseware') && (
+              <p className="mt-1 text-sm text-muted">Brand: {product.vendor}</p>
+            )}
 
           <div className="mt-4">
             <ProductPrice price={lineTotal} compareAtPrice={compareTotal} />
@@ -465,6 +492,19 @@ const PRODUCT_FRAGMENT = `#graphql
     seo {
       description
       title
+    }
+    seller: metafield(namespace: "custom", key: "seller") {
+      reference {
+        ... on Metaobject {
+          handle
+          slug: field(key: "slug") {
+            value
+          }
+          displayName: field(key: "display_name") {
+            value
+          }
+        }
+      }
     }
   }
   ${PRODUCT_VARIANT_FRAGMENT}

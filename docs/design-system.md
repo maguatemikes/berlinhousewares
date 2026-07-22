@@ -85,6 +85,35 @@ Accent usage: brand green for eyebrows, active/hover states, badges, the "Sale"
 nav item, promo tiles, focus rings. Dark text stays `ink`. Section backgrounds
 **alternate** `paper` / `mint`.
 
+#### Text on green surfaces — white only, on a dark green
+
+**Never put black/dark text on a green background.** When a green surface carries
+text or icons, the text is **white** and the green must be **dark enough to pass
+contrast**. Light greens are accent-only.
+
+| Green | White text | Verdict |
+|---|---|---|
+| `brand-400` `#5ec778` | 2.12:1 | ❌ accent only — never put text on it |
+| `brand-500` `#37ad57` | 2.89:1 | ❌ accent only — never put text on it |
+| `brand-600` `#268c44` | 4.27:1 | ⚠️ large text / icons only (≥3:1) |
+| `brand-700` `#216e39` | **6.26:1** | ✅ **default green text surface** — any size |
+
+So:
+
+- **Green band, card, or button with text → `bg-brand-700` + `text-white`.**
+  (`.btn-brand` is exactly this.) Use `brand-800` for its hover so the label
+  stays readable — on green, hover goes **darker**, never lighter.
+- **`brand-400` / `brand-500` are decoration only** — nav underlines, notification
+  dots, progress bars, focus rings, rules. Nothing that has to be read sits on them.
+- **`brand-600`** only behind large headings or icon-sized graphics — it is
+  **4.27:1**, which is under AA for body copy. When in doubt use `brand-700`.
+  (The announcement bar and cart count badge are `brand-700` for this reason.)
+- Soft green *surfaces* (`mint` / `mint-deep`) are the opposite case — they're
+  near-white, so they take **`ink`** text as normal.
+
+Rule of thumb: **light green = decoration, dark green = a surface you can write
+white on.** There is no valid combination of green background + dark text.
+
 ### Typography (type scale — never override globally)
 
 - Font: `--font-sans` / `--font-display` = Inter.
@@ -208,6 +237,8 @@ illustrations for this brand.
 - Preserve standard Hydrogen data flow and URL-driven variant state.
 
 **Don't**
+- Put **dark/black text on a green background**. Text on green is **white on
+  `brand-700`**; `brand-400`/`500` are accent-only surfaces (see §2).
 - Use decorative/illustrative **icons as content or imagery** — category/feature
   tiles and hero use **real photos** (with a branded color-tile fallback, never a
   placeholder icon). Icons are for functional UI only.
