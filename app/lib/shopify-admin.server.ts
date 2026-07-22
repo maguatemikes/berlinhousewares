@@ -18,8 +18,6 @@ declare global {
     PRIVATE_ADMIN_CLIENT_SECRET?: string;
     /** Gate for /admin/sync-sellers — without a matching ?key= the route 404s. */
     PRIVATE_SYNC_SECRET?: string;
-    /** Store webhook signing secret (Settings → Notifications → Webhooks). */
-    PRIVATE_WEBHOOK_SECRET?: string;
   }
 }
 
@@ -36,8 +34,6 @@ export type AdminEnv = {
   PRIVATE_RESALEOS_API_KEY?: string;
   /** Gate for /admin/sync-sellers. */
   PRIVATE_SYNC_SECRET?: string;
-  /** Store webhook signing secret — admin-created webhooks are signed with this. */
-  PRIVATE_WEBHOOK_SECRET?: string;
 };
 
 export function hasAdminToken(env: AdminEnv): boolean {
@@ -157,17 +153,6 @@ export async function ensureSeller(
   return {id, created: true};
 }
 
-/** Current custom.seller metaobject id on a product (null if unset). */
-export async function getProductSellerId(
-  env: AdminEnv,
-  productId: string,
-): Promise<string | null> {
-  const data = await adminGraphQL<{
-    product: {metafield: {value: string} | null} | null;
-  }>(env, PRODUCT_SELLER_QUERY, {id: productId});
-  return data.product?.metafield?.value ?? null;
-}
-
 /** Set a product's custom.seller metafield → a seller metaobject. */
 export async function setProductSeller(
   env: AdminEnv,
@@ -200,14 +185,6 @@ export async function setProductSeller(
 const METAOBJECT_BY_HANDLE = `
   query SellerByHandle($handle: MetaobjectHandleInput!) {
     metaobjectByHandle(handle: $handle) { id }
-  }
-`;
-
-const PRODUCT_SELLER_QUERY = `
-  query ProductSeller($id: ID!) {
-    product(id: $id) {
-      metafield(namespace: "custom", key: "seller") { value }
-    }
   }
 `;
 

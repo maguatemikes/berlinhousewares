@@ -32,3 +32,9 @@ SHOP_ID = "71626096792"
 # SESSION_SECRET is a real secret — do NOT put it here. Set it as an encrypted
 # Secret in the dashboard, or `npx wrangler secret put SESSION_SECRET`.
 # Secrets DO persist across `wrangler deploy` (unlike plain dashboard vars).
+
+# Seller sweep: every 10 minutes the `scheduled` handler (server.ts) links any
+# products missing their custom.seller reference. Free-tier cron; the usual run
+# is one cheap query and no writes.
+[triggers]
+crons = ["*/10 * * * *"]

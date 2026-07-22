@@ -56,4 +56,26 @@ export default {
       return new Response('An unexpected error occurred', {status: 500});
     }
   },
+
+  /**
+   * Cron trigger (wrangler.toml [triggers]) — the seller sweep. Links any
+   * products missing their custom.seller reference; the usual run finds
+   * nothing to do and exits after one cheap query.
+   */
+  async scheduled(
+    _controller: unknown,
+    env: Env,
+    executionContext: ExecutionContext,
+  ): Promise<void> {
+    const {runSellerSync} = await import('~/lib/seller-sync.server');
+    executionContext.waitUntil(
+      runSellerSync(env as Parameters<typeof runSellerSync>[0])
+        .then((summary) =>
+          console.log('[seller-sync cron]', JSON.stringify(summary)),
+        )
+        .catch((e) =>
+          console.error('[seller-sync cron] failed:', (e as Error).message),
+        ),
+    );
+  },
 };
