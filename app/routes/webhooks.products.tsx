@@ -91,8 +91,18 @@ export async function action({request, context}: Route.ActionArgs) {
     signingSecrets,
   );
   if (!valid) {
+    // Forensics: head=7b.. means JSON (wrong secret); head=1f8b means gzip
+    // (body arrived compressed — HMAC must run on the decompressed bytes).
+    const head = Array.from(new Uint8Array(bodyBytes).slice(0, 2))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    const hdr = (request.headers.get('X-Shopify-Hmac-Sha256') ?? '').slice(0, 6);
+    const computed: string[] = [];
+    for (const s of signingSecrets) {
+      if (s) computed.push((await hmacBase64(bodyBytes, s)).slice(0, 6));
+    }
     console.log(
-      `[webhooks.products] INVALID SIGNATURE (topic ${request.headers.get('X-Shopify-Topic')}, ${bodyBytes.byteLength} bytes)`,
+      `[webhooks.products] INVALID SIGNATURE topic=${request.headers.get('X-Shopify-Topic')} bytes=${bodyBytes.byteLength} head=0x${head} enc=${request.headers.get('content-encoding')} hdr=${hdr}… computed=[${computed.join(',')}]`,
     );
     return new Response('Invalid signature', {status: 401});
   }
