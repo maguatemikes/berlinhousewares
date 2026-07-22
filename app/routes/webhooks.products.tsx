@@ -94,13 +94,19 @@ export async function action({request, context}: Route.ActionArgs) {
 
   const product = JSON.parse(rawBody) as {
     admin_graphql_api_id?: string;
+    id?: number | string;
     title?: string;
     vendor?: string;
     variants?: Array<{sku?: string | null}>;
   };
 
-  const productGid = product.admin_graphql_api_id;
+  // Payload shape varies by webhook API version — fall back to the numeric id
+  // (present in every variant) and build the gid from it.
+  const productGid =
+    product.admin_graphql_api_id ??
+    (product.id ? `gid://shopify/Product/${product.id}` : null);
   if (!productGid) {
+    console.log(`[webhooks.products] ${topic} "${product.title}": no product id`);
     return new Response('No product id — nothing to link', {status: 200});
   }
 
@@ -119,6 +125,9 @@ export async function action({request, context}: Route.ActionArgs) {
     slug = sellerHandle(vendor);
     displayName = vendor;
   } else {
+    console.log(
+      `[webhooks.products] ${topic} "${product.title}": no consignor or vendor`,
+    );
     return new Response('No consignor or vendor — nothing to link', {
       status: 200,
     });
@@ -131,6 +140,9 @@ export async function action({request, context}: Route.ActionArgs) {
       displayName,
     });
     await setProductSeller(env, productGid, sellerId);
+    console.log(
+      `[webhooks.products] ${topic} "${product.title}": ${created ? 'created seller + ' : ''}linked → ${slug}`,
+    );
     return new Response(
       `${created ? 'Created seller and linked' : 'Linked'} "${product.title}" → ${slug}`,
       {status: 200},

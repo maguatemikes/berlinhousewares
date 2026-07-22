@@ -203,9 +203,11 @@ export default function Product() {
         {/* Product info */}
         <div className="lg:py-2">
           {(() => {
-            // Prefer the assigned seller (metaobject) — its slug is the stable
-            // store URL and display_name the shown label. Fall back to the plain
-            // vendor text (no link) when a product hasn't been tagged to a seller.
+            // The eyebrow slot belongs to the SELLER exclusively (the brand
+            // lives under the title). Three honest states:
+            //   linked            → seller link
+            //   fresh + unlinked  → "Seller syncing…" (webhook hasn't run yet)
+            //   old + unlinked    → nothing (never assigned — no fake states)
             const ref = product.seller?.reference;
             if (ref) {
               const slug = ref.slug?.value?.trim() || ref.handle;
@@ -220,17 +222,23 @@ export default function Product() {
                 </Link>
               );
             }
-            return product.vendor ? (
-              <span className="eyebrow text-brand-700">{product.vendor}</span>
+            const SYNC_WINDOW_MS = 15 * 60 * 1000;
+            const isFresh =
+              product.createdAt &&
+              Date.now() - new Date(product.createdAt).getTime() <
+                SYNC_WINDOW_MS;
+            return isFresh ? (
+              <span className="eyebrow animate-pulse text-muted">
+                Seller syncing…
+              </span>
             ) : null;
           })()}
           <h1 className="mt-2 text-3xl font-extrabold uppercase leading-tight tracking-tight md:text-4xl">
             {title}
           </h1>
-          {/* Brand under the title — only when a seller owns the eyebrow (no
-              duplication) and the vendor is a real brand, not the store default. */}
-          {product.seller?.reference &&
-            product.vendor &&
+          {/* Brand under the title — the vendor's only home (the eyebrow is
+              seller-only now). Hidden when it's just the store-default vendor. */}
+          {product.vendor &&
             !product.vendor.toLowerCase().includes('berlinhouseware') && (
               <p className="mt-1 text-sm text-muted">Brand: {product.vendor}</p>
             )}
@@ -452,6 +460,7 @@ const PRODUCT_FRAGMENT = `#graphql
     id
     title
     vendor
+    createdAt
     handle
     descriptionHtml
     description
