@@ -33,12 +33,18 @@ export function CartLineItem({
     (o) => o.value && o.value !== 'Default Title',
   );
 
-  // Custom line-item attributes (e.g. a custom-print design). Keys prefixed with
-  // "_" are hidden from the customer. "Design file" gets a thumbnail.
-  const attributes = (line.attributes ?? []).filter(
+  // Custom line-item attributes (e.g. a custom-print design). The "Design
+  // preview" (design composited on the product) is the thumbnail; the URL
+  // attributes themselves are hidden from the cart list (they're for the order).
+  const allAttrs = (line.attributes ?? []).filter(
     (a) => a.value && !a.key.startsWith('_'),
   );
-  const designUrl = attributes.find((a) => a.key === 'Design file')?.value;
+  const designUrl =
+    allAttrs.find((a) => a.key === 'Design preview')?.value ??
+    allAttrs.find((a) => a.key === 'Design file')?.value;
+  const attributes = allAttrs.filter(
+    (a) => !/^https?:\/\//.test(a.value ?? ''), // hide raw URLs from the shopper
+  );
 
   return (
     <li key={id} className="rounded-2xl border border-black/10 bg-paper p-3">

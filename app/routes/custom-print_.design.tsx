@@ -178,6 +178,17 @@ export default function DesignStudio() {
     c.renderAll();
   }
 
+  function loadImg(url: string, cors: boolean): Promise<HTMLImageElement> {
+    return new Promise((res, rej) => {
+      const im = new Image();
+      if (cors) im.crossOrigin = 'anonymous';
+      im.onload = () => res(im);
+      im.onerror = rej;
+      im.src = url;
+    });
+  }
+
+  // Isolated design at print resolution — the file the PRINTER uses.
   function exportPrint(): string {
     const c = fx.current?.canvas;
     if (!c || c.getObjects().length === 0) return '';
@@ -195,29 +206,64 @@ export default function DesignStudio() {
     });
   }
 
-  async function addToCart() {
-    const previewUrl = exportPrint();
-    if (!previewUrl) return;
-    setUploading(true);
-    let backendUrl: string | null = null;
-    let backendMsg = '';
+  // Composite MOCKUP — the design placed on the real bandana photo (the preview
+  // everyone sees: cart, confirmation, order). Bandana loaded with CORS so the
+  // canvas isn't tainted.
+  async function exportMockup(): Promise<string> {
+    const c = fx.current?.canvas;
+    if (!c || c.getObjects().length === 0 || !mockUrl) return '';
+    c.discardActiveObject();
+    c.renderAll();
+    const S = 1000;
+    const designLayer = c.toDataURL({format: 'png', multiplier: S / c.getWidth()});
+    const bandana = await loadImg(
+      `${mockUrl}${mockUrl.includes('?') ? '&' : '?'}width=1000`,
+      true,
+    );
+    const design = await loadImg(designLayer, false);
+    const out = document.createElement('canvas');
+    out.width = S;
+    out.height = S;
+    const ctx = out.getContext('2d');
+    if (!ctx) return '';
+    ctx.drawImage(bandana, 0, 0, S, S); // square photo → square canvas
+    ctx.drawImage(design, 0, 0, S, S); // design overlaid at its print-area spot
+    return out.toDataURL('image/png');
+  }
+
+  async function upload(dataUrl: string, filename: string): Promise<string | null> {
     try {
       const res = await fetch('/api/upload-design', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({image: previewUrl, filename: `bandana-${colorName}.png`}),
+        body: JSON.stringify({image: dataUrl, filename}),
       });
-      const j = (await res.json()) as {stored?: boolean; url?: string; message?: string; bytes?: number};
-      backendUrl = j.url ?? null;
-      backendMsg = j.stored ? `Stored (${j.bytes} bytes)` : j.message ?? 'Received by backend';
-    } catch (e) {
-      backendMsg = `Upload failed: ${(e as Error).message}`;
+      const j = (await res.json()) as {url?: string};
+      return j.url ?? null;
+    } catch {
+      return null;
     }
+  }
+
+  async function addToCart() {
+    const printFile = exportPrint();
+    if (!printFile) return;
+    setUploading(true);
+    let mockup = '';
+    try {
+      mockup = await exportMockup();
+    } catch {
+      mockup = ''; // CORS or draw failure → fall back to print file as preview
+    }
+    const [printUrl, mockUrlUploaded] = await Promise.all([
+      upload(printFile, `print-${colorName}.png`),
+      mockup ? upload(mockup, `mockup-${colorName}.png`) : Promise.resolve(null),
+    ]);
     setUploading(false);
 
-    // Add the real variant to the Shopify cart with the design as line-item
-    // attributes → they flow through to checkout and the order.
-    const designValue = backendUrl ?? '(upload failed)';
+    const previewUrl = mockUrlUploaded ?? printUrl ?? '';
+    // Preview (design on bandana) is what shoppers/merchant SEE; print file is
+    // the isolated artwork the printer uses.
     cartFetcher.submit(
       {
         [CartForm.INPUT_NAME]: JSON.stringify({
@@ -230,7 +276,8 @@ export default function DesignStudio() {
                 attributes: [
                   {key: 'Color', value: colorName},
                   {key: 'Print technique', value: 'DTG'},
-                  {key: 'Design file', value: designValue},
+                  {key: 'Design preview', value: previewUrl || '(none)'},
+                  {key: 'Print file', value: printUrl ?? '(none)'},
                 ],
               },
             ],
@@ -241,13 +288,15 @@ export default function DesignStudio() {
     );
 
     setAdded({
-      previewUrl,
-      backendUrl,
-      backendMsg,
+      previewUrl: mockup || printFile,
+      backendUrl: previewUrl || printUrl,
+      backendMsg: previewUrl
+        ? 'Design saved — preview + print file attached to the order'
+        : 'Upload failed',
       attributes: [
         {key: 'Product', value: product.title},
         {key: 'Color', value: colorName},
-        {key: 'Design file', value: designValue},
+        {key: 'Print file', value: printUrl ?? '(none)'},
       ],
     });
   }
