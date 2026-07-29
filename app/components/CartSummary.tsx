@@ -122,7 +122,9 @@ function CartDiscounts({
       ?.map(({code}) => code) || [];
 
   return (
-    <div>
+    // The global `form { max-width: 400px }` reset caps CartForm's <form> and
+    // makes the pill fall short of the drawer width — clear it for these forms.
+    <div className="[&_form]:w-full [&_form]:max-w-none">
       {/* Applied codes with a remove option */}
       {codes.length > 0 && (
         <UpdateDiscountForm>
