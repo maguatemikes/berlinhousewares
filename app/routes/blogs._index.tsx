@@ -3,17 +3,18 @@ import type {Route} from './+types/blogs._index';
 import {getPaginationVariables} from '@shopify/hydrogen';
 import {PaginatedResourceSection} from '~/components/PaginatedResourceSection';
 import type {BlogsQuery} from 'storefrontapi.generated';
+import {siteOrigin} from '~/lib/seo';
 
 type BlogNode = BlogsQuery['blogs']['nodes'][0];
 
-export const meta: Route.MetaFunction = () => {
+export const meta: Route.MetaFunction = ({matches}) => {
   const title = 'Journal — Berlin Houseware';
   const description =
     'Stories, guides, and inspiration from Berlin Houseware on new and pre-loved homeware, consignment, and living beautifully with less.';
   return [
     {title},
     {name: 'description', content: description},
-    {tagName: 'link', rel: 'canonical', href: '/blogs'},
+    {tagName: 'link', rel: 'canonical', href: `${siteOrigin(matches)}/blogs`},
     {property: 'og:type', content: 'website'},
     {property: 'og:title', content: title},
     {property: 'og:description', content: description},

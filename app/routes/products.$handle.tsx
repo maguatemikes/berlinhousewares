@@ -16,8 +16,9 @@ import {ProductPrice} from '~/components/ProductPrice';
 import {ProductGallery} from '~/components/ProductGallery';
 import {ProductForm} from '~/components/ProductForm';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
+import {siteOrigin} from '~/lib/seo';
 
-export const meta: Route.MetaFunction = ({data}) => {
+export const meta: Route.MetaFunction = ({data, matches}) => {
   const product = data?.product;
   if (!product) {
     return [{title: 'Product | Berlin Houseware'}];
@@ -34,7 +35,7 @@ export const meta: Route.MetaFunction = ({data}) => {
     .trim()
     .slice(0, 160);
   const image = variant?.image?.url || product.images?.nodes?.[0]?.url;
-  const url = `/products/${product.handle}`;
+  const url = `${siteOrigin(matches)}/products/${product.handle}`;
 
   return [
     {title},

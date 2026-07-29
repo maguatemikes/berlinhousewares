@@ -12,8 +12,9 @@ import {
   type Facet,
 } from '~/components/CollectionFilters';
 import {GridPending} from '~/components/GridPending';
+import {siteOrigin} from '~/lib/seo';
 
-export const meta: Route.MetaFunction = ({data}) => {
+export const meta: Route.MetaFunction = ({data, matches}) => {
   const collection = data?.collection;
   const title = collection
     ? `${collection.title} — Berlin Houseware`
@@ -25,9 +26,10 @@ export const meta: Route.MetaFunction = ({data}) => {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 160);
+  const origin = siteOrigin(matches);
   const url = collection
-    ? `/collections/${collection.handle}`
-    : '/collections';
+    ? `${origin}/collections/${collection.handle}`
+    : `${origin}/collections`;
   const image = collection?.image?.url;
   return [
     {title},

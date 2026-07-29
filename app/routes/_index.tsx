@@ -8,17 +8,19 @@ import type {
   HomeCollectionsQuery,
 } from 'storefrontapi.generated';
 import {ProductItem} from '~/components/ProductItem';
+import {siteOrigin} from '~/lib/seo';
 
 // Hero photo on the Shopify CDN (1672×941). Rendered responsively via Hydrogen
 // <Image> below, and reused as the homepage social-share image (og:image).
 const HERO_IMAGE =
   'https://cdn.shopify.com/s/files/1/0716/2609/6792/files/hero.png';
 
-export const meta: Route.MetaFunction = () => {
+export const meta: Route.MetaFunction = ({matches}) => {
   const title = 'Berlin Houseware — New & Pre-Loved Homeware';
   const description =
     'Shop new and verified pre-loved homeware at Berlin Houseware — a curated marketplace for kitchen, dining, décor, and lighting. Buy, sell, and consign quality pieces.';
-  const url = '/';
+  const origin = siteOrigin(matches);
+  const url = `${origin}/`;
   return [
     {title},
     {name: 'description', content: description},
@@ -52,7 +54,7 @@ export const meta: Route.MetaFunction = () => {
           '@type': 'SearchAction',
           target: {
             '@type': 'EntryPoint',
-            urlTemplate: '/search?q={search_term_string}',
+            urlTemplate: `${origin}/search?q={search_term_string}`,
           },
           'query-input': 'required name=search_term_string',
         },
