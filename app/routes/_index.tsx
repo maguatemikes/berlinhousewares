@@ -9,8 +9,56 @@ import type {
 } from 'storefrontapi.generated';
 import {ProductItem} from '~/components/ProductItem';
 
+// Hero photo on the Shopify CDN (1672×941). Rendered responsively via Hydrogen
+// <Image> below, and reused as the homepage social-share image (og:image).
+const HERO_IMAGE =
+  'https://cdn.shopify.com/s/files/1/0716/2609/6792/files/hero.png';
+
 export const meta: Route.MetaFunction = () => {
-  return [{title: 'Berlin Houseware — New & Pre-Loved Homeware'}];
+  const title = 'Berlin Houseware — New & Pre-Loved Homeware';
+  const description =
+    'Shop new and verified pre-loved homeware at Berlin Houseware — a curated marketplace for kitchen, dining, décor, and lighting. Buy, sell, and consign quality pieces.';
+  const url = '/';
+  return [
+    {title},
+    {name: 'description', content: description},
+    {tagName: 'link', rel: 'canonical', href: url},
+    {property: 'og:type', content: 'website'},
+    {property: 'og:site_name', content: 'Berlin Houseware'},
+    {property: 'og:title', content: title},
+    {property: 'og:description', content: description},
+    {property: 'og:url', content: url},
+    {property: 'og:image', content: HERO_IMAGE},
+    {name: 'twitter:card', content: 'summary_large_image'},
+    {name: 'twitter:title', content: title},
+    {name: 'twitter:description', content: description},
+    {name: 'twitter:image', content: HERO_IMAGE},
+    {
+      'script:ld+json': {
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: 'Berlin Houseware',
+        url,
+        description,
+      },
+    },
+    {
+      'script:ld+json': {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'Berlin Houseware',
+        url,
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: {
+            '@type': 'EntryPoint',
+            urlTemplate: '/search?q={search_term_string}',
+          },
+          'query-input': 'required name=search_term_string',
+        },
+      },
+    },
+  ];
 };
 
 export async function loader(args: Route.LoaderArgs) {
@@ -193,12 +241,18 @@ function Hero({collection}: {collection?: FeaturedCollectionFragment}) {
     : '/collections';
   return (
     <section className="relative min-h-[75vh] w-full overflow-hidden bg-mint md:min-h-[85vh]">
-      {/* Sage fallback — shows if public/hero.jpg is missing */}
+      {/* Sage fallback — shows behind the photo while it loads */}
       <div className="absolute inset-0 bg-gradient-to-br from-mint via-mint-deep to-brand-200" />
-      {/* Hero photo — public/hero.png (anchored top-right so the model's head isn't cropped) */}
-      <div
-        className="absolute inset-0 bg-cover bg-no-repeat"
-        style={{backgroundImage: 'url(/hero.png)', backgroundPosition: 'right top'}}
+      {/* Hero photo — prioritized as the LCP image (eager + high fetch priority),
+          anchored top-right so the model's head isn't cropped. */}
+      <Image
+        src={HERO_IMAGE}
+        alt="New and verified pre-loved homeware from Berlin Houseware"
+        aspectRatio="1672/941"
+        sizes="100vw"
+        loading="eager"
+        fetchPriority="high"
+        className="absolute inset-0 h-full w-full object-cover object-right-top"
       />
       {/* Left wash keeps dark text legible over the negative space */}
       <div className="absolute inset-0 bg-gradient-to-r from-mint/95 via-mint/70 to-mint/30 md:via-mint/40 md:to-transparent" />
@@ -311,7 +365,7 @@ function CategoryTiles({
 }: {
   collections: HomeCollectionsQuery['collections']['nodes'];
 }) {
-  const tiles = collections.slice(0, 3);
+  const tiles = collections.slice(0, 8);
 
   return (
     <Section className="bg-paper">
@@ -322,33 +376,27 @@ function CategoryTiles({
       />
 
       {tiles.length ? (
-        // Real Shopify collections (with imagery)
-        <div className="grid gap-4 md:grid-cols-3">
-          {tiles.map((c, idx) => (
+        // Real Shopify collections (with imagery) — uniform 1:1 square tiles
+        // that tile cleanly as more categories are added.
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {tiles.map((c) => (
             <Link
               key={c.id}
               to={`/collections/${c.handle}`}
-              className={`group relative overflow-hidden rounded-3xl bg-mint-deep ${
-                idx === 0 ? 'md:row-span-2 md:min-h-[26rem]' : 'min-h-[16rem]'
-              }`}
+              className="group relative aspect-square overflow-hidden rounded-3xl bg-mint-deep"
             >
               {c.image && (
                 <Image
                   data={c.image}
-                  sizes="(min-width: 768px) 33vw, 100vw"
+                  sizes="(min-width: 1280px) 16vw, (min-width: 1024px) 20vw, (min-width: 640px) 25vw, 33vw"
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   alt={c.image.altText || c.title}
                 />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-              <div className="absolute bottom-0 left-0 p-6">
-                <h3 className="text-2xl font-extrabold uppercase text-white">
-                  {c.title}
-                </h3>
-                <span className="mt-3 inline-flex btn btn-ghost !px-4 !py-2 text-sm">
-                  Shop now
-                </span>
-              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+              <h3 className="absolute bottom-0 left-0 p-3 text-sm font-extrabold uppercase leading-tight text-white sm:text-base">
+                {c.title}
+              </h3>
             </Link>
           ))}
         </div>
@@ -357,27 +405,22 @@ function CategoryTiles({
         // exist — real ones replace these automatically). Photo-first: drop
         // images in public/categories/<slug>.jpg; a branded gradient shows
         // until then (no placeholder icons).
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {SHOP_CATEGORIES.map((cat) => (
             <Link
               key={cat.name}
               to="/collections/all"
-              className="group relative min-h-[16rem] overflow-hidden rounded-3xl bg-mint-deep"
+              className="group relative aspect-square overflow-hidden rounded-3xl bg-mint-deep"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-mint-deep via-brand-100 to-brand-200" />
               <div
                 className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
                 style={{backgroundImage: `url(/categories/${cat.slug}.jpg?v=2)`}}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-              <div className="absolute bottom-0 left-0 p-6">
-                <h3 className="text-2xl font-extrabold uppercase text-white">
-                  {cat.name}
-                </h3>
-                <span className="mt-3 inline-flex btn btn-ghost !px-4 !py-2 text-sm">
-                  Shop now
-                </span>
-              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+              <h3 className="absolute bottom-0 left-0 p-3 text-sm font-extrabold uppercase leading-tight text-white sm:text-base">
+                {cat.name}
+              </h3>
             </Link>
           ))}
         </div>
@@ -501,12 +544,18 @@ function ConsignBand() {
 function NewsletterBand() {
   return (
     <section className="bg-brand-700">
-      <div className="ui-container flex flex-col items-center gap-6 py-16 text-center text-white md:py-24">
+      <div className="ui-container flex flex-col items-center gap-5 py-16 text-center text-white md:py-24">
+        <span className="eyebrow text-white/75">Buy · Sell · Consign</span>
         <h2 className="max-w-2xl text-3xl font-extrabold uppercase tracking-tight md:text-4xl">
-          Join the movement. Get first access to drops.
+          First dibs on new arrivals &amp; pre-loved finds.
         </h2>
+        <p className="max-w-xl text-sm text-white/85 md:text-base">
+          Join the list for early access to fresh drops, newly verified
+          pre-loved pieces, and restock alerts — plus tips for consigning your
+          own.
+        </p>
         <form
-          className="!max-w-none flex w-full max-w-md flex-col gap-3 sm:flex-row"
+          className="flex w-full max-w-xl flex-col gap-3 sm:flex-row"
           onSubmit={(e) => e.preventDefault()}
         >
           <input
@@ -517,7 +566,7 @@ function NewsletterBand() {
             className="!mt-0 !mb-0 w-full flex-1 rounded-pill !border-white/25 bg-white px-5 py-3 text-ink"
           />
           <button type="submit" className="btn btn-dark">
-            Sign up
+            Join the list
           </button>
         </form>
         <p className="text-xs text-white/80">
@@ -546,7 +595,7 @@ const HOME_COLLECTIONS_QUERY = `#graphql
   }
   query HomeCollections($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
-    collections(first: 6, sortKey: UPDATED_AT, reverse: true) {
+    collections(first: 8, sortKey: UPDATED_AT, reverse: true) {
       nodes {
         ...FeaturedCollection
       }
