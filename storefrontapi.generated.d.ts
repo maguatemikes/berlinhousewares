@@ -831,72 +831,6 @@ export type ShopQuery = {
   };
 };
 
-export type CustomBandanaQueryVariables = StorefrontAPI.Exact<{
-  handle: StorefrontAPI.Scalars['String']['input'];
-  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
-  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
-}>;
-
-export type CustomBandanaQuery = {
-  product?: StorefrontAPI.Maybe<
-    Pick<
-      StorefrontAPI.Product,
-      'id' | 'title' | 'handle' | 'descriptionHtml'
-    > & {
-      priceRange: {
-        minVariantPrice: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-      };
-      options: Array<
-        Pick<StorefrontAPI.ProductOption, 'name'> & {
-          optionValues: Array<Pick<StorefrontAPI.ProductOptionValue, 'name'>>;
-        }
-      >;
-      images: {nodes: Array<Pick<StorefrontAPI.Image, 'url' | 'altText'>>};
-      variants: {
-        nodes: Array<
-          Pick<
-            StorefrontAPI.ProductVariant,
-            'id' | 'title' | 'availableForSale'
-          > & {
-            image?: StorefrontAPI.Maybe<
-              Pick<StorefrontAPI.Image, 'url' | 'altText'>
-            >;
-            price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-            selectedOptions: Array<
-              Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
-            >;
-          }
-        >;
-      };
-    }
-  >;
-};
-
-export type StudioBandanaQueryVariables = StorefrontAPI.Exact<{
-  handle: StorefrontAPI.Scalars['String']['input'];
-  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
-  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
-}>;
-
-export type StudioBandanaQuery = {
-  product?: StorefrontAPI.Maybe<
-    Pick<StorefrontAPI.Product, 'id' | 'title'> & {
-      images: {nodes: Array<Pick<StorefrontAPI.Image, 'url'>>};
-      variants: {
-        nodes: Array<
-          Pick<StorefrontAPI.ProductVariant, 'id' | 'title'> & {
-            image?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Image, 'url'>>;
-            price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-            selectedOptions: Array<
-              Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
-            >;
-          }
-        >;
-      };
-    }
-  >;
-};
-
 export type PageQueryVariables = StorefrontAPI.Exact<{
   language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
   country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
@@ -1519,14 +1453,6 @@ interface GeneratedQueryTypes {
   '#graphql\n  fragment ShopProduct on Product {\n    id\n    handle\n    title\n    vendor\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n      maxVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n  }\n  query Shop(\n    $country: CountryCode\n    $language: LanguageCode\n    $first: Int\n    $last: Int\n    $startCursor: String\n    $endCursor: String\n    $productFilters: [ProductFilter!]\n    $sortKey: SearchSortKeys\n    $reverse: Boolean\n  ) @inContext(country: $country, language: $language) {\n    search(\n      query: ""\n      first: $first\n      last: $last\n      before: $startCursor\n      after: $endCursor\n      types: [PRODUCT]\n      productFilters: $productFilters\n      sortKey: $sortKey\n      reverse: $reverse\n      unavailableProducts: LAST\n    ) {\n      productFilters {\n        id\n        label\n        type\n        values {\n          id\n          label\n          count\n          input\n        }\n      }\n      nodes {\n        __typename\n        ...ShopProduct\n      }\n      pageInfo {\n        hasPreviousPage\n        hasNextPage\n        startCursor\n        endCursor\n      }\n    }\n  }\n': {
     return: ShopQuery;
     variables: ShopQueryVariables;
-  };
-  '#graphql\n  query CustomBandana(\n    $handle: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    product(handle: $handle) {\n      id\n      title\n      handle\n      descriptionHtml\n      priceRange {\n        minVariantPrice {\n          amount\n          currencyCode\n        }\n      }\n      options {\n        name\n        optionValues {\n          name\n        }\n      }\n      images(first: 6) {\n        nodes {\n          url\n          altText\n        }\n      }\n      variants(first: 20) {\n        nodes {\n          id\n          title\n          availableForSale\n          image {\n            url\n            altText\n          }\n          price {\n            amount\n            currencyCode\n          }\n          selectedOptions {\n            name\n            value\n          }\n        }\n      }\n    }\n  }\n': {
-    return: CustomBandanaQuery;
-    variables: CustomBandanaQueryVariables;
-  };
-  '#graphql\n  query StudioBandana(\n    $handle: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    product(handle: $handle) {\n      id\n      title\n      images(first: 6) {\n        nodes {\n          url\n        }\n      }\n      variants(first: 20) {\n        nodes {\n          id\n          title\n          image {\n            url\n          }\n          price {\n            amount\n            currencyCode\n          }\n          selectedOptions {\n            name\n            value\n          }\n        }\n      }\n    }\n  }\n': {
-    return: StudioBandanaQuery;
-    variables: StudioBandanaQueryVariables;
   };
   '#graphql\n  query Page(\n    $language: LanguageCode,\n    $country: CountryCode,\n    $handle: String!\n  )\n  @inContext(language: $language, country: $country) {\n    page(handle: $handle) {\n      handle\n      id\n      title\n      body\n      seo {\n        description\n        title\n      }\n    }\n  }\n': {
     return: PageQuery;

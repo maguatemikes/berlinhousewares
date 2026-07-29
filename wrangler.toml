@@ -39,9 +39,3 @@ SHOP_ID = "71626096792"
 # is one cheap query and no writes.
 [triggers]
 crons = ["*/10 * * * *"]
-
-# Storage for finished custom-print design/print files (Workers KV — free, no
-# card). Namespace created via: npx wrangler kv namespace create DESIGNS
-[[kv_namespaces]]
-binding = "DESIGNS"
-id = "f5ea2d3bea5b406da5c0508ecdb27528"

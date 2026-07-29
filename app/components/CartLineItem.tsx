@@ -33,19 +33,6 @@ export function CartLineItem({
     (o) => o.value && o.value !== 'Default Title',
   );
 
-  // Custom line-item attributes (e.g. a custom-print design). The "Design
-  // preview" (design composited on the product) is the thumbnail; the URL
-  // attributes themselves are hidden from the cart list (they're for the order).
-  const allAttrs = (line.attributes ?? []).filter(
-    (a) => a.value && !a.key.startsWith('_'),
-  );
-  const designUrl =
-    allAttrs.find((a) => a.key === 'Design preview')?.value ??
-    allAttrs.find((a) => a.key === 'Design file')?.value;
-  const attributes = allAttrs.filter(
-    (a) => !/^https?:\/\//.test(a.value ?? ''), // hide raw URLs from the shopper
-  );
-
   return (
     <li key={id} className="rounded-2xl border border-black/10 bg-paper p-3">
       <div className="flex gap-3">
@@ -92,36 +79,6 @@ export function CartLineItem({
             <p className="mt-0.5 truncate text-xs text-muted">
               {options.map((o) => o.value).join(' · ')}
             </p>
-          )}
-
-          {/* Custom-print design attributes */}
-          {attributes.length > 0 && (
-            <div className="mt-1.5 flex items-start gap-2">
-              {designUrl && (
-                <img
-                  src={designUrl}
-                  alt="Your design"
-                  className="h-9 w-9 shrink-0 rounded-md bg-[repeating-conic-gradient(#0000000d_0%_25%,transparent_0%_50%)] bg-[length:8px_8px] object-contain ring-1 ring-black/10"
-                />
-              )}
-              <ul className="min-w-0 text-[11px] leading-tight text-muted">
-                {attributes
-                  .filter((a) => a.key !== 'Design file')
-                  .map((a) => (
-                    <li key={a.key} className="truncate">
-                      <span className="font-semibold text-ink">{a.key}:</span>{' '}
-                      {a.value}
-                    </li>
-                  ))}
-                {designUrl && (
-                  <li className="truncate">
-                    <span className="font-semibold text-brand-700">
-                      ✓ Custom design attached
-                    </span>
-                  </li>
-                )}
-              </ul>
-            </div>
           )}
 
           <div className="mt-auto flex items-center justify-between pt-2">
