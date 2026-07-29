@@ -1,7 +1,6 @@
 import {useLoaderData} from 'react-router';
 import type {Route} from './+types/search';
 import {getPaginationVariables, Analytics} from '@shopify/hydrogen';
-import {SearchForm} from '~/components/SearchForm';
 import {SearchResults} from '~/components/SearchResults';
 import {
   type RegularSearchReturn,
@@ -13,8 +12,15 @@ import type {
   PredictiveSearchQuery,
 } from 'storefrontapi.generated';
 
-export const meta: Route.MetaFunction = () => {
-  return [{title: `Hydrogen | Search`}];
+export const meta: Route.MetaFunction = ({location}) => {
+  const term = new URLSearchParams(location.search).get('q');
+  return [
+    {
+      title: term
+        ? `Search: ${term} — Berlin Houseware`
+        : 'Search — Berlin Houseware',
+    },
+  ];
 };
 
 export async function loader({request, context}: Route.LoaderArgs) {
@@ -40,38 +46,44 @@ export default function SearchPage() {
   const {type, term, result, error} = useLoaderData<typeof loader>();
   if (type === 'predictive') return null;
 
+  const hasResults = Boolean(term && result?.total);
+
   return (
-    <div className="search">
-      <h1>Search</h1>
-      <SearchForm>
-        {({inputRef}) => (
-          <>
-            <input
-              defaultValue={term}
-              name="q"
-              placeholder="Search…"
-              ref={inputRef}
-              type="search"
-            />
-            &nbsp;
-            <button type="submit">Search</button>
-          </>
-        )}
-      </SearchForm>
-      {error && <p style={{color: 'red'}}>{error}</p>}
-      {!term || !result?.total ? (
-        <SearchResults.Empty />
-      ) : (
-        <SearchResults result={result} term={term}>
-          {({articles, pages, products, term}) => (
-            <div>
-              <SearchResults.Products products={products} term={term} />
-              <SearchResults.Pages pages={pages} term={term} />
-              <SearchResults.Articles articles={articles} term={term} />
-            </div>
+    <div className="bg-paper">
+      {/* Search header band */}
+      <section className="bg-mint">
+        <div className="ui-container py-12 md:py-16">
+          <span className="eyebrow text-brand-700">Search</span>
+          <h1 className="mt-3 text-4xl font-extrabold uppercase tracking-tight md:text-6xl">
+            {term ? <>Results for “{term}”</> : 'Search'}
+          </h1>
+
+          {term && (
+            <p className="mt-4 text-sm text-muted">
+              {result?.total ?? 0}{' '}
+              {result?.total === 1 ? 'result' : 'results'} for “{term}”
+            </p>
           )}
-        </SearchResults>
-      )}
+        </div>
+      </section>
+
+      <section className="ui-container py-12 md:py-16">
+        {error && <p className="mb-6 text-sm text-red-600">{error}</p>}
+        {!hasResults ? (
+          <SearchResults.Empty />
+        ) : (
+          <SearchResults result={result} term={term}>
+            {({articles, pages, products, term}) => (
+              <div className="flex flex-col gap-14">
+                <SearchResults.Products products={products} term={term} />
+                <SearchResults.Pages pages={pages} term={term} />
+                <SearchResults.Articles articles={articles} term={term} />
+              </div>
+            )}
+          </SearchResults>
+        )}
+      </section>
+
       <Analytics.SearchView data={{searchTerm: term, searchResults: result}} />
     </div>
   );
