@@ -406,7 +406,7 @@ function Accordion({
   meta?: React.ReactNode;
 }) {
   return (
-    <details className="group border-b border-black/10" open={defaultOpen}>
+    <details className="accordion group border-b border-black/10" open={defaultOpen}>
       <summary className="flex cursor-pointer list-none items-center justify-between py-4 text-base font-semibold text-ink">
         <span>{title}</span>
         <span className="flex items-center gap-3">

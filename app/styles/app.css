@@ -551,6 +551,32 @@ button.reset:hover:not(:has(> *)) {
   width: 100%;
 }
 
+/* PDP accordions — smooth native open/close (no JS). ::details-content lets us
+   animate the panel height, and interpolate-size enables the 0 ↔ auto tween;
+   content-visibility transitions with allow-discrete so content stays visible
+   while it collapses. Unsupported browsers ignore this and snap open as before. */
+.accordion {
+  interpolate-size: allow-keywords;
+}
+
+.accordion::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size 0.28s ease,
+    content-visibility 0.28s ease allow-discrete;
+}
+
+.accordion[open]::details-content {
+  block-size: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accordion::details-content {
+    transition: none;
+  }
+}
+
 /*
 * --------------------------------------------------
 * routes/blog._index.tsx
