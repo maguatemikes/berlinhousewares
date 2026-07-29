@@ -150,7 +150,7 @@ function OrderSearchForm({
     <form
       ref={formRef}
       onSubmit={handleSubmit}
-      className="mb-8 rounded-2xl border border-black/10 bg-[#f5f5f5] p-4"
+      className="mb-8 max-w-3xl rounded-2xl border border-black/10 bg-[#f5f5f5] p-4"
       aria-label="Search orders"
     >
       <p className="eyebrow mb-3 text-brand-700">Filter orders</p>

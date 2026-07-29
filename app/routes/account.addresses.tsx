@@ -377,7 +377,10 @@ export function AddressForm({
     'w-full rounded-2xl border border-black/15 bg-white px-4 py-2.5 text-sm text-ink placeholder:text-muted transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200';
   const labelClass = 'mb-1.5 block text-sm font-semibold text-ink';
   return (
-    <Form id={addressId} className="rounded-2xl border border-black/10 p-5">
+    <Form
+      id={addressId}
+      className="max-w-2xl rounded-2xl border border-black/10 p-5"
+    >
       <input type="hidden" name="addressId" defaultValue={addressId} />
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-ink">
