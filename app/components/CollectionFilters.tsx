@@ -1,5 +1,10 @@
 import {useState} from 'react';
-import {useNavigate, useSearchParams} from 'react-router';
+import {
+  useLocation,
+  useNavigate,
+  useNavigation,
+  useSearchParams,
+} from 'react-router';
 
 /** A facet returned by the Storefront API (`productFilters` / `filters`). */
 export type Facet = {
@@ -14,10 +19,36 @@ export type Facet = {
   }>;
 };
 
+/**
+ * True while a filter/sort/pagination change on the SAME collection page is
+ * loading — use it to show a pending state on the product grid. Native React
+ * Router (`useNavigation`), no deps.
+ */
+export function useFilterPending() {
+  const navigation = useNavigation();
+  const location = useLocation();
+  return (
+    navigation.state === 'loading' &&
+    navigation.location?.pathname === location.pathname
+  );
+}
+
 /** Shared helpers for reading/writing filter state in the URL. */
 function useFilterState() {
-  const [searchParams] = useSearchParams();
+  const [committed] = useSearchParams();
   const navigate = useNavigate();
+  const navigation = useNavigation();
+  const location = useLocation();
+
+  // Optimistic: while a same-page navigation is in flight (a filter/sort click),
+  // reflect its PENDING url so checkboxes, sort and chips update the instant
+  // they're clicked — instead of waiting for the products to finish loading.
+  const pending =
+    navigation.location &&
+    navigation.location.pathname === location.pathname
+      ? new URLSearchParams(navigation.location.search)
+      : null;
+  const searchParams = pending ?? committed;
 
   const activeInputs = searchParams.getAll('filter');
 

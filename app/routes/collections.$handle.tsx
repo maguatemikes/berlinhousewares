@@ -8,8 +8,10 @@ import {
   CollectionFilters,
   SortMenu,
   ActiveFilterChips,
+  useFilterPending,
   type Facet,
 } from '~/components/CollectionFilters';
+import {GridPending} from '~/components/GridPending';
 
 export const meta: Route.MetaFunction = ({data}) => {
   return [
@@ -82,6 +84,7 @@ export default function Collection() {
   const {collection} = useLoaderData<typeof loader>();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const facets = (collection.products?.filters ?? []) as unknown as Facet[];
+  const pending = useFilterPending();
 
   return (
     <div className="bg-paper">
@@ -135,6 +138,7 @@ export default function Collection() {
             <ActiveFilterChips facets={facets} />
           </div>
 
+          <GridPending pending={pending}>
           <Pagination connection={collection.products}>
             {({nodes, isLoading, PreviousLink, NextLink}) => {
               if (!nodes.length) {
@@ -178,6 +182,7 @@ export default function Collection() {
               );
             }}
           </Pagination>
+          </GridPending>
         </div>
       </div>
 

@@ -7,8 +7,10 @@ import {
   CollectionFilters,
   SortMenu,
   ActiveFilterChips,
+  useFilterPending,
   type Facet,
 } from '~/components/CollectionFilters';
+import {GridPending} from '~/components/GridPending';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Shop — Berlin Houseware'}];
@@ -71,6 +73,7 @@ export default function ShopAll() {
   const {search} = useLoaderData<typeof loader>();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const facets = (search?.productFilters ?? []) as unknown as Facet[];
+  const pending = useFilterPending();
 
   return (
     <div className="bg-paper">
@@ -122,6 +125,7 @@ export default function ShopAll() {
             <ActiveFilterChips facets={facets} />
           </div>
 
+          <GridPending pending={pending}>
           <Pagination connection={search}>
             {({nodes, isLoading, PreviousLink, NextLink}) => {
               const products = nodes.filter((n) => n.__typename === 'Product');
@@ -166,6 +170,7 @@ export default function ShopAll() {
               );
             }}
           </Pagination>
+          </GridPending>
         </div>
       </div>
 
