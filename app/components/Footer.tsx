@@ -44,7 +44,7 @@ export function Footer({
   publicStoreDomain,
 }: FooterProps) {
   return (
-    <footer className="mt-10 bg-ink text-white">
+    <footer className="bg-ink text-white">
       <div className="ui-container py-14">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-5">
           {/* Brand */}

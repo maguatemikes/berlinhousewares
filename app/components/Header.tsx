@@ -164,8 +164,8 @@ function UtilityBar({customer}: {customer: HeaderProps['customer']}) {
         </span>
         <nav className="flex items-center" aria-label="Utility">
           <UtilItem first>
-            <NavLink to="/pages/about" prefetch="intent" className={utilLinkClass}>
-              Find a Store
+            <NavLink to="/sellers" prefetch="intent" className={utilLinkClass}>
+              Find a Seller
             </NavLink>
           </UtilItem>
           <UtilItem>
@@ -191,8 +191,8 @@ function UtilSignedOut() {
   return (
     <>
       <UtilItem>
-        <NavLink to="/account/login" className={utilLinkClass}>
-          Join Us
+        <NavLink to="/consign" prefetch="intent" className={utilLinkClass}>
+          Join Consignment
         </NavLink>
       </UtilItem>
       <UtilItem>
