@@ -7,7 +7,20 @@ import type {BlogsQuery} from 'storefrontapi.generated';
 type BlogNode = BlogsQuery['blogs']['nodes'][0];
 
 export const meta: Route.MetaFunction = () => {
-  return [{title: `Hydrogen | Blogs`}];
+  const title = 'Journal — Berlin Houseware';
+  const description =
+    'Stories, guides, and inspiration from Berlin Houseware on new and pre-loved homeware, consignment, and living beautifully with less.';
+  return [
+    {title},
+    {name: 'description', content: description},
+    {tagName: 'link', rel: 'canonical', href: '/blogs'},
+    {property: 'og:type', content: 'website'},
+    {property: 'og:title', content: title},
+    {property: 'og:description', content: description},
+    {name: 'twitter:card', content: 'summary_large_image'},
+    {name: 'twitter:title', content: title},
+    {name: 'twitter:description', content: description},
+  ];
 };
 
 export async function loader(args: Route.LoaderArgs) {

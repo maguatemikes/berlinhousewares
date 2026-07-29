@@ -4,7 +4,43 @@ import {Image} from '@shopify/hydrogen';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
 
 export const meta: Route.MetaFunction = ({data}) => {
-  return [{title: `Hydrogen | ${data?.article.title ?? ''} article`}];
+  const article = data?.article;
+  if (!article) return [{title: 'Article — Berlin Houseware'}];
+  const title = article.seo?.title || `${article.title} — Berlin Houseware`;
+  const description = (article.seo?.description || article.title)
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 160);
+  const image = article.image?.url;
+  return [
+    {title},
+    {name: 'description', content: description},
+    {property: 'og:type', content: 'article'},
+    {property: 'og:title', content: title},
+    {property: 'og:description', content: description},
+    ...(image ? [{property: 'og:image', content: image}] : []),
+    ...(article.publishedAt
+      ? [{property: 'article:published_time', content: article.publishedAt}]
+      : []),
+    {name: 'twitter:card', content: 'summary_large_image'},
+    {name: 'twitter:title', content: title},
+    {name: 'twitter:description', content: description},
+    ...(image ? [{name: 'twitter:image', content: image}] : []),
+    {
+      'script:ld+json': {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: article.title,
+        description,
+        image: image ? [image] : undefined,
+        datePublished: article.publishedAt,
+        author: article.author?.name
+          ? {'@type': 'Person', name: article.author.name}
+          : undefined,
+        publisher: {'@type': 'Organization', name: 'Berlin Houseware'},
+      },
+    },
+  ];
 };
 
 export async function loader(args: Route.LoaderArgs) {
