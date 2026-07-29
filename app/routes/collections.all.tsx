@@ -13,7 +13,24 @@ import {
 import {GridPending} from '~/components/GridPending';
 
 export const meta: Route.MetaFunction = () => {
-  return [{title: 'Shop — Berlin Houseware'}];
+  const title = 'Shop All — Berlin Houseware';
+  const description =
+    'Browse everything at Berlin Houseware — new and verified pre-loved homeware. Filter by color, brand, and price to find your next piece.';
+  const url = '/collections/all';
+  return [
+    {title},
+    {name: 'description', content: description},
+    // Canonical stays on the base URL so filter/sort params
+    // (?filter=…&sort=…) don't fragment into duplicate pages.
+    {tagName: 'link', rel: 'canonical', href: url},
+    {property: 'og:type', content: 'website'},
+    {property: 'og:title', content: title},
+    {property: 'og:description', content: description},
+    {property: 'og:url', content: url},
+    {name: 'twitter:card', content: 'summary_large_image'},
+    {name: 'twitter:title', content: title},
+    {name: 'twitter:description', content: description},
+  ];
 };
 
 export async function loader(args: Route.LoaderArgs) {
@@ -99,7 +116,7 @@ export default function ShopAll() {
         </div>
 
         {/* Results */}
-        <div className="min-w-0 flex-1">
+        <div id="collection-results" className="min-w-0 flex-1 scroll-mt-32">
           <div className="mb-4 flex items-center justify-between gap-3">
             <button
               type="button"

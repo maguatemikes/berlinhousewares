@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {
   useLocation,
   useNavigate,
@@ -59,7 +59,17 @@ function useFilterState() {
     ['cursor', 'startCursor', 'endCursor', 'direction'].forEach((k) =>
       p.delete(k),
     );
+    // Keep our own scroll position (preventScrollReset), then bring the product
+    // grid up to the top so the refreshed results are what you land on. Only
+    // filter/sort/chip changes go through commit() — pagination doesn't, so
+    // "Load more/previous" is left untouched. Smooth is handled by the global
+    // `scroll-behavior: smooth`; `scroll-mt-*` on the target clears the header.
     navigate(`?${p.toString()}`, {preventScrollReset: true});
+    if (typeof document !== 'undefined') {
+      document
+        .getElementById('collection-results')
+        ?.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }
   }
 
   return {searchParams, activeInputs, commit};
@@ -223,25 +233,107 @@ export const SORT_OPTIONS = [
 export function SortMenu() {
   const {searchParams, commit} = useFilterState();
   const value = searchParams.get('sort') ?? '';
+  const current =
+    SORT_OPTIONS.find((o) => o.value === value) ?? SORT_OPTIONS[0];
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  // Close on outside click or Escape.
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
   return (
-    <label className="inline-flex items-center gap-2 text-sm">
+    <div ref={ref} className="relative inline-flex items-center gap-2 text-sm">
       <span className="text-muted">Sort</span>
-      <select
-        value={value}
-        onChange={(e) =>
-          commit((p) =>
-            e.target.value ? p.set('sort', e.target.value) : p.delete('sort'),
-          )
-        }
-        className="!m-0 rounded-full !border-black/15 bg-white py-2 pl-4 pr-8 text-sm font-semibold text-ink focus:!border-brand-500"
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="inline-flex items-center gap-2 rounded-full border border-black/15 bg-white py-2 pl-4 pr-3 font-semibold text-ink transition-colors hover:border-black/30 focus:border-brand-500 focus:outline-none"
       >
-        {SORT_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
+        <span>{current.label}</span>
+        <svg
+          viewBox="0 0 24 24"
+          className={`h-4 w-4 shrink-0 text-muted transition-transform duration-200 ${
+            open ? 'rotate-180' : ''
+          }`}
+          aria-hidden="true"
+        >
+          <path
+            d="m6 9 6 6 6-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+
+      {open && (
+        <ul
+          role="listbox"
+          aria-label="Sort by"
+          className="absolute right-0 top-full z-20 mt-2 min-w-[13rem] overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 shadow-lg"
+        >
+          {SORT_OPTIONS.map((o) => {
+            const active = o.value === current.value;
+            return (
+              <li key={o.value} role="option" aria-selected={active}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    commit((p) =>
+                      o.value ? p.set('sort', o.value) : p.delete('sort'),
+                    );
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition-colors ${
+                    active
+                      ? 'bg-mint font-semibold text-ink'
+                      : 'text-ink hover:bg-mint'
+                  }`}
+                >
+                  {o.label}
+                  {active && (
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4 shrink-0 text-brand-700"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="m5 13 4 4L19 7"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 

@@ -14,8 +14,34 @@ import {
 import {GridPending} from '~/components/GridPending';
 
 export const meta: Route.MetaFunction = ({data}) => {
+  const collection = data?.collection;
+  const title = collection
+    ? `${collection.title} — Berlin Houseware`
+    : 'Collection — Berlin Houseware';
+  const description = (
+    collection?.description ||
+    `Shop the ${collection?.title ?? ''} collection at Berlin Houseware — new & pre-loved homeware.`
+  )
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 160);
+  const url = collection
+    ? `/collections/${collection.handle}`
+    : '/collections';
+  const image = collection?.image?.url;
   return [
-    {title: `${data?.collection?.title ?? 'Collection'} — Berlin Houseware`},
+    {title},
+    {name: 'description', content: description},
+    {tagName: 'link', rel: 'canonical', href: url},
+    {property: 'og:type', content: 'website'},
+    {property: 'og:title', content: title},
+    {property: 'og:description', content: description},
+    {property: 'og:url', content: url},
+    ...(image ? [{property: 'og:image', content: image}] : []),
+    {name: 'twitter:card', content: 'summary_large_image'},
+    {name: 'twitter:title', content: title},
+    {name: 'twitter:description', content: description},
+    ...(image ? [{name: 'twitter:image', content: image}] : []),
   ];
 };
 
@@ -112,7 +138,7 @@ export default function Collection() {
         </div>
 
         {/* Results */}
-        <div className="min-w-0 flex-1">
+        <div id="collection-results" className="min-w-0 flex-1 scroll-mt-32">
           <div className="mb-4 flex items-center justify-between gap-3">
             <button
               type="button"
@@ -285,6 +311,13 @@ const COLLECTION_QUERY = `#graphql
       handle
       title
       description
+      image {
+        id
+        url
+        altText
+        width
+        height
+      }
       products(
         first: $first
         last: $last
