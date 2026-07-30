@@ -117,26 +117,66 @@ export function CollectionFilters({facets}: {facets: Facet[]}) {
         if (!values.length) return null;
         return (
           <FilterSection key={facet.id} label={facet.label}>
-            <div className="space-y-2">
-              {values.map((v) => (
-                <label
-                  key={v.id}
-                  className="flex cursor-pointer items-center gap-2.5 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={activeInputs.includes(v.input)}
-                    onChange={() => toggle(v.input)}
-                    className="!m-0 h-4 w-4 shrink-0 rounded !border-black/25 accent-brand-600"
-                  />
-                  <span className="flex-1 text-ink">{v.label}</span>
-                  <span className="text-xs text-muted">{v.count}</span>
-                </label>
-              ))}
-            </div>
+            <FacetValues
+              values={values}
+              activeInputs={activeInputs}
+              onToggle={toggle}
+            />
           </FilterSection>
         );
       })}
+    </div>
+  );
+}
+
+// Values shown per facet before the "Show all" toggle. Change this one number
+// to tune (or delete FacetValues + revert to a plain list to remove entirely).
+const VISIBLE_VALUES = 6;
+
+/**
+ * Renders a facet's checkbox values, capped at VISIBLE_VALUES with a
+ * "Show all (N)" toggle so long lists (e.g. colours) don't run down the page.
+ * Active selections still show above the grid as chips, so nothing hidden here
+ * is "lost."
+ */
+function FacetValues({
+  values,
+  activeInputs,
+  onToggle,
+}: {
+  values: Facet['values'];
+  activeInputs: string[];
+  onToggle: (input: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? values : values.slice(0, VISIBLE_VALUES);
+
+  return (
+    <div className="space-y-2">
+      {shown.map((v) => (
+        <label
+          key={v.id}
+          className="flex cursor-pointer items-center gap-2.5 text-sm"
+        >
+          <input
+            type="checkbox"
+            checked={activeInputs.includes(v.input)}
+            onChange={() => onToggle(v.input)}
+            className="!m-0 h-4 w-4 shrink-0 rounded !border-black/25 accent-brand-600"
+          />
+          <span className="flex-1 text-ink">{v.label}</span>
+          <span className="text-xs text-muted">{v.count}</span>
+        </label>
+      ))}
+      {values.length > VISIBLE_VALUES && (
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          className="pt-0.5 text-sm font-semibold text-brand-700 hover:underline"
+        >
+          {expanded ? 'Show less' : `Show all ${values.length}`}
+        </button>
+      )}
     </div>
   );
 }
