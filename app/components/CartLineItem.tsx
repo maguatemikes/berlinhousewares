@@ -23,6 +23,10 @@ export function CartLineItem({
 }) {
   const {id, merchandise} = line;
   const {product, title, image, selectedOptions} = merchandise;
+  // While the just-added line is still optimistic (server hasn't confirmed the
+  // real line id yet), present it as "confirming" so it reads as loading — not
+  // as broken/inert controls.
+  const pending = !!line.isOptimistic;
   const lineItemUrl = useVariantUrl(product.handle, selectedOptions);
   const {close} = useAside();
   const lineItemChildren = childrenMap[id];
@@ -34,7 +38,13 @@ export function CartLineItem({
   );
 
   return (
-    <li key={id} className="rounded-2xl border border-black/10 bg-paper p-3">
+    <li
+      key={id}
+      aria-busy={pending}
+      className={`rounded-2xl border border-black/10 bg-paper p-3 transition-opacity ${
+        pending ? 'opacity-80' : ''
+      }`}
+    >
       <div className="flex gap-3">
         <Link
           prefetch="intent"
@@ -189,19 +199,40 @@ function CartLineRemoveButton({
       <button
         disabled={disabled}
         type="submit"
-        aria-label="Remove item"
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+        aria-label={disabled ? 'Adding item…' : 'Remove item'}
+        className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${
+          disabled
+            ? 'text-brand-600'
+            : 'text-muted hover:bg-red-50 hover:text-red-600'
+        }`}
       >
-        <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-          <path
-            d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        {disabled ? (
+          // Confirming with Shopify — reads as loading, not a dead button.
+          <svg
+            viewBox="0 0 24 24"
+            className="h-4 w-4 animate-spin"
+            aria-hidden="true"
+          >
+            <path
+              d="M12 3a9 9 0 1 0 9 9"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+            <path
+              d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
       </button>
     </CartForm>
   );
