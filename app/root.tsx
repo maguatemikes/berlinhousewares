@@ -4,6 +4,7 @@ import {
   useRouteError,
   isRouteErrorResponse,
   type ShouldRevalidateFunction,
+  Link,
   Links,
   Meta,
   Scripts,
@@ -212,21 +213,62 @@ export function ErrorBoundary() {
   let errorStatus = 500;
 
   if (isRouteErrorResponse(error)) {
-    errorMessage = error?.data?.message ?? error.data;
+    errorMessage = (error?.data?.message ?? error.data) as string;
     errorStatus = error.status;
   } else if (error instanceof Error) {
     errorMessage = error.message;
   }
 
+  const is404 = errorStatus === 404;
+
   return (
-    <div className="route-error">
-      <h1>Oops</h1>
-      <h2>{errorStatus}</h2>
-      {errorMessage && (
-        <fieldset>
-          <pre>{errorMessage}</pre>
-        </fieldset>
-      )}
-    </div>
+    <section className="bg-paper">
+      <div className="ui-container flex min-h-[80vh] flex-col items-center justify-center py-20 text-center">
+        {/* Wordmark, doubles as a home link */}
+        <Link
+          to="/"
+          className="mb-10 text-xl font-extrabold lowercase tracking-tight text-ink"
+        >
+          berlin<span className="text-brand-600">houseware</span>
+        </Link>
+
+        <span className="eyebrow text-brand-700">Error {errorStatus}</span>
+
+        <p className="mt-3 text-[5.5rem] font-extrabold leading-[0.9] tracking-tight text-ink md:text-[9rem]">
+          {is404 ? (
+            <>
+              4<span className="text-brand-500">0</span>4
+            </>
+          ) : (
+            'Oops'
+          )}
+        </p>
+
+        <h1 className="mt-2 text-2xl font-extrabold uppercase tracking-tight text-ink md:text-4xl">
+          {is404 ? 'This page is out of stock.' : 'Something went sideways.'}
+        </h1>
+
+        <p className="mt-4 max-w-md text-muted">
+          {is404
+            ? 'We looked everywhere — under the cushions, behind the couch, in the good drawer — and came up empty. Maybe someone already consigned it.'
+            : 'A little hiccup on our end. Give it another go, or head home while we tidy up.'}
+        </p>
+
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Link to="/" className="btn btn-dark">
+            Take me home
+          </Link>
+          <Link to="/collections/all" className="btn btn-outline">
+            Browse the shop
+          </Link>
+        </div>
+
+        {!is404 && errorMessage ? (
+          <p className="mt-10 max-w-lg overflow-x-auto rounded-xl bg-mint px-4 py-2 text-xs text-muted">
+            {errorMessage}
+          </p>
+        ) : null}
+      </div>
+    </section>
   );
 }
