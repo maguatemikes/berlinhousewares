@@ -101,11 +101,14 @@ export function CollectionFilters({facets}: {facets: Facet[]}) {
     <div className="border-t border-black/10">
       {facets.map((facet) => {
         if (facet.type === 'PRICE_RANGE') {
+          const {floor, ceil} = priceBounds(facet);
           return (
             <FilterSection key={facet.id} label="Price">
               <PriceBody
                 min={searchParams.get('minPrice') ?? ''}
                 max={searchParams.get('maxPrice') ?? ''}
+                floor={floor}
+                ceil={ceil}
                 onApply={setPrice}
               />
             </FilterSection>
@@ -218,45 +221,132 @@ function FilterSection({
   );
 }
 
+/** Read the collection's price range (floor/ceil) from the PRICE_RANGE facet's
+ *  input JSON, e.g. {"price":{"min":0,"max":250}}. Falls back to a safe range. */
+function priceBounds(facet: Facet): {floor: number; ceil: number} {
+  try {
+    const parsed = JSON.parse(facet.values[0]?.input ?? '{}') as {
+      price?: {min?: number; max?: number};
+    };
+    const p = parsed.price ?? {};
+    const floor = Math.max(0, Math.floor(Number(p.min ?? 0)));
+    const ceil = Math.ceil(Number(p.max ?? 0));
+    return {floor, ceil: ceil > floor ? ceil : floor + 100};
+  } catch {
+    return {floor: 0, ceil: 100};
+  }
+}
+
+const clampN = (n: number, lo: number, hi: number) =>
+  Math.min(Math.max(Number.isFinite(n) ? n : lo, lo), hi);
+
+// Both handles share these classes: the input itself is a thin, transparent,
+// full-width overlay with pointer-events off so only the *thumbs* are grabbable
+// (that's what lets two range inputs stack without blocking each other).
+const RANGE_THUMB =
+  'pointer-events-none absolute inset-x-0 top-1/2 m-0 h-4 w-full -translate-y-1/2 cursor-pointer appearance-none border-0 bg-transparent focus:outline-none ' +
+  '[&::-webkit-slider-runnable-track]:border-0 [&::-webkit-slider-runnable-track]:bg-transparent [&::-moz-range-track]:border-0 [&::-moz-range-track]:bg-transparent ' +
+  '[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-brand-600 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow [&::-webkit-slider-thumb]:transition-transform hover:[&::-webkit-slider-thumb]:scale-110 focus-visible:[&::-webkit-slider-thumb]:ring-4 focus-visible:[&::-webkit-slider-thumb]:ring-brand-200 ' +
+  '[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-brand-600 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow focus-visible:[&::-moz-range-thumb]:ring-4 focus-visible:[&::-moz-range-thumb]:ring-brand-200';
+
+/**
+ * Draggable dual-handle price slider. Purely local while dragging; commits the
+ * selection to the URL (via `onApply`) on release — same min/max params the old
+ * number inputs used. Dropping a handle to the floor/ceil clears that bound.
+ */
 function PriceBody({
   min,
   max,
+  floor: rawFloor,
+  ceil: rawCeil,
   onApply,
 }: {
   min: string;
   max: string;
+  floor: number;
+  ceil: number;
   onApply: (min: string, max: string) => void;
 }) {
-  const [lo, setLo] = useState(min);
-  const [hi, setHi] = useState(max);
+  // Shopify re-reports the PRICE_RANGE facet as the *currently filtered* range,
+  // so applying a price filter shrinks it to the selection — which would rescale
+  // the track and snap the handle to the edge ("rubber-band"). Freeze the scale:
+  // trust the facet's range only when no price filter is active (that's the true
+  // full range, and still updates on collection / other-facet changes); while a
+  // price filter is active, keep the last full range.
+  const priceActive = Boolean(min || max);
+  const boundsRef = useRef({floor: rawFloor, ceil: rawCeil});
+  if (!priceActive) boundsRef.current = {floor: rawFloor, ceil: rawCeil};
+  const {floor, ceil} = boundsRef.current;
+
+  const [lo, setLo] = useState(() => (min ? clampN(Number(min), floor, ceil) : floor));
+  const [hi, setHi] = useState(() => (max ? clampN(Number(max), floor, ceil) : ceil));
+
+  // Re-sync when the URL price changes from outside (e.g. cleared via a chip or
+  // "Clear all"), or when the (frozen) bounds change.
+  useEffect(() => {
+    setLo(min ? clampN(Number(min), floor, ceil) : floor);
+    setHi(max ? clampN(Number(max), floor, ceil) : ceil);
+  }, [min, max, floor, ceil]);
+
+  const span = Math.max(1, ceil - floor);
+  const pctLo = ((lo - floor) / span) * 100;
+  const pctHi = ((hi - floor) / span) * 100;
+
+  // A handle sitting on the floor/ceil means "no bound", so we drop that param —
+  // keeps the full range equal to no price filter at all.
+  const commit = (l: number, h: number) =>
+    onApply(l > floor ? String(l) : '', h < ceil ? String(h) : '');
+
   return (
     <div>
-      <div className="flex items-center gap-2">
-        <input
-          type="number"
-          inputMode="decimal"
-          placeholder="Min"
-          value={lo}
-          onChange={(e) => setLo(e.target.value)}
-          className="!m-0 w-full rounded-xl !border-black/15 bg-white px-3 py-2 text-sm text-ink focus:!border-brand-500"
+      <div className="mb-3 flex items-center justify-between text-sm font-semibold text-ink tabular-nums">
+        <span>${Math.round(lo)}</span>
+        <span>
+          ${Math.round(hi)}
+          {hi >= ceil ? '+' : ''}
+        </span>
+      </div>
+
+      <div className="relative h-4">
+        {/* rail */}
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-black/10" />
+        {/* selected range fill */}
+        <div
+          className="pointer-events-none absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-brand-500"
+          style={{left: `${pctLo}%`, right: `${100 - pctHi}%`}}
         />
-        <span className="text-muted">–</span>
+        {/* min handle */}
         <input
-          type="number"
-          inputMode="decimal"
-          placeholder="Max"
+          type="range"
+          min={floor}
+          max={ceil}
+          value={lo}
+          aria-label="Minimum price"
+          onChange={(e) => setLo(Math.min(Number(e.target.value), hi))}
+          onPointerUp={() => commit(lo, hi)}
+          onTouchEnd={() => commit(lo, hi)}
+          onKeyUp={() => commit(lo, hi)}
+          className={`${RANGE_THUMB} z-20`}
+        />
+        {/* max handle */}
+        <input
+          type="range"
+          min={floor}
+          max={ceil}
           value={hi}
-          onChange={(e) => setHi(e.target.value)}
-          className="!m-0 w-full rounded-xl !border-black/15 bg-white px-3 py-2 text-sm text-ink focus:!border-brand-500"
+          aria-label="Maximum price"
+          onChange={(e) => setHi(Math.max(Number(e.target.value), lo))}
+          onPointerUp={() => commit(lo, hi)}
+          onTouchEnd={() => commit(lo, hi)}
+          onKeyUp={() => commit(lo, hi)}
+          className={`${RANGE_THUMB} z-10`}
         />
       </div>
-      <button
-        type="button"
-        onClick={() => onApply(lo, hi)}
-        className="btn btn-outline mt-3 w-full !py-2 text-sm"
-      >
-        Apply
-      </button>
+
+      <div className="mt-2 flex items-center justify-between text-[11px] text-muted tabular-nums">
+        <span>${floor}</span>
+        <span>${ceil}+</span>
+      </div>
     </div>
   );
 }
