@@ -4,6 +4,7 @@ import type {
   ProductItemFragment,
   ShopProductFragment,
   RecommendedProductFragment,
+  RelatedProductFragment,
 } from 'storefrontapi.generated';
 import {useVariantUrl} from '~/lib/variants';
 
@@ -14,7 +15,8 @@ export function ProductItem({
   product:
     | ShopProductFragment
     | ProductItemFragment
-    | RecommendedProductFragment;
+    | RecommendedProductFragment
+    | RelatedProductFragment;
   loading?: 'eager' | 'lazy';
 }) {
   const variantUrl = useVariantUrl(product.handle);
