@@ -31,7 +31,7 @@ const COLUMNS = [
     title: 'Company',
     links: [
       {label: 'About Us', to: '/pages/about'},
-      {label: 'Journal', to: '/blogs/journal'},
+      {label: 'Journal', to: '/blogs'},
       {label: 'Sustainability', to: '/pages/about'},
       {label: 'Careers', to: '/pages/about'},
     ],
@@ -116,8 +116,8 @@ export function Footer({
       <div className="border-t border-white/10">
         <div className="ui-container flex flex-col items-center justify-between gap-3 py-6 text-xs text-white/50 sm:flex-row">
           <p>
-            © {new Date().getFullYear()} {header?.shop?.name || 'Berlin Houseware'}. All
-            rights reserved.
+            © {new Date().getFullYear()}{' '}
+            {header?.shop?.name || 'Berlin Houseware'}. All rights reserved.
           </p>
           <p>Powered by Shopify Hydrogen · Carbon-neutral shipping</p>
         </div>
