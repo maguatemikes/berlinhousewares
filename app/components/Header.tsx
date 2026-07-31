@@ -1,5 +1,12 @@
 import {Suspense, useEffect, useState} from 'react';
-import {Await, Form, NavLink, Link, useAsyncValue} from 'react-router';
+import {
+  Await,
+  Form,
+  NavLink,
+  Link,
+  useAsyncValue,
+  useNavigation,
+} from 'react-router';
 import {
   type CartViewPayload,
   useAnalytics,
@@ -437,15 +444,40 @@ function AccountToggle({customer}: {customer: HeaderProps['customer']}) {
 }
 
 function AccountLink({loggedIn}: {loggedIn: boolean}) {
+  // The account data is uncacheable (personal), so navigating in always waits on
+  // a fresh Customer Account API fetch. Show a spinner on the icon the instant
+  // it's clicked so it doesn't feel like "nothing happened".
+  const navigation = useNavigation();
+  const pending =
+    navigation.state !== 'idle' &&
+    (navigation.location?.pathname?.startsWith('/account') ?? false);
+
   return (
     <NavLink
       to="/account"
       prefetch="intent"
       aria-label={loggedIn ? 'Your account' : 'Sign in'}
+      aria-busy={pending}
       className="relative grid h-10 w-10 place-items-center rounded-full text-ink hover:bg-mint"
     >
-      <PersonIcon />
-      {loggedIn && (
+      {pending ? (
+        <svg
+          viewBox="0 0 24 24"
+          className="h-5 w-5 animate-spin text-brand-700"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 3a9 9 0 1 0 9 9"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      ) : (
+        <PersonIcon />
+      )}
+      {loggedIn && !pending && (
         <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-paper" />
       )}
     </NavLink>
