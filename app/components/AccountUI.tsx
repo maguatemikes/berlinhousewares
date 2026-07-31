@@ -83,6 +83,35 @@ export function AccountCard({
   );
 }
 
+/** Pending placeholder shown in the content slot while a tab's loader fetches,
+ *  so switching tabs gives instant feedback instead of a dead beat. */
+export function AccountSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm"
+    >
+      <div className="flex items-center gap-3 border-b border-black/10 px-5 py-4 md:px-6">
+        <div className="h-[18px] w-[18px] animate-pulse rounded bg-black/10" />
+        <div className="h-4 w-28 animate-pulse rounded bg-black/10" />
+      </div>
+      <div className="divide-y divide-black/10">
+        {Array.from({length: 4}).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 px-5 py-4 md:px-6">
+            <div className="h-[42px] w-[42px] flex-none animate-pulse rounded-[11px] bg-black/10" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="h-3.5 w-24 animate-pulse rounded bg-black/10" />
+              <div className="h-3 w-44 max-w-full animate-pulse rounded bg-black/[0.07]" />
+            </div>
+            <div className="hidden h-5 w-24 flex-none animate-pulse rounded-full bg-black/[0.07] sm:block" />
+            <div className="h-3.5 w-12 flex-none animate-pulse rounded bg-black/[0.07]" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------------------------- Icons --------------------------------- */
 const sp = {
   viewBox: '0 0 24 24',
