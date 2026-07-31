@@ -9,6 +9,12 @@ import {
   useOutletContext,
 } from 'react-router';
 import type {Route} from './+types/account.profile';
+import {
+  AccountCard,
+  IconUser,
+  ACCOUNT_LABEL,
+  ACCOUNT_INPUT,
+} from '~/components/AccountUI';
 
 export type ActionResponse = {
   error: string | null;
@@ -86,19 +92,15 @@ export default function AccountProfile() {
   const customer = action?.customer ?? account?.customer;
 
   return (
-    <div>
-      <h2 className="mb-1 text-xl font-bold text-ink">Profile</h2>
-      <p className="text-sm text-muted">
+    <AccountCard icon={<IconUser />} title="Profile">
+      <p className="mb-5 text-sm text-muted">
         Update the name on your Berlin Houseware account.
       </p>
 
-      <Form method="PUT" className="mt-6 max-w-lg">
+      <Form method="PUT">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label
-              htmlFor="firstName"
-              className="mb-1.5 block text-sm font-semibold text-ink"
-            >
+            <label htmlFor="firstName" className={ACCOUNT_LABEL}>
               First name
             </label>
             <input
@@ -110,14 +112,11 @@ export default function AccountProfile() {
               aria-label="First name"
               defaultValue={customer.firstName ?? ''}
               minLength={2}
-              className="w-full rounded-2xl border border-black/15 bg-white px-4 py-2.5 text-sm text-ink placeholder:text-muted transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+              className={ACCOUNT_INPUT}
             />
           </div>
           <div>
-            <label
-              htmlFor="lastName"
-              className="mb-1.5 block text-sm font-semibold text-ink"
-            >
+            <label htmlFor="lastName" className={ACCOUNT_LABEL}>
               Last name
             </label>
             <input
@@ -129,23 +128,38 @@ export default function AccountProfile() {
               aria-label="Last name"
               defaultValue={customer.lastName ?? ''}
               minLength={2}
-              className="w-full rounded-2xl border border-black/15 bg-white px-4 py-2.5 text-sm text-ink placeholder:text-muted transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+              className={ACCOUNT_INPUT}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="email" className={ACCOUNT_LABEL}>
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={customer.emailAddress?.emailAddress ?? ''}
+              readOnly
+              disabled
+              className={`${ACCOUNT_INPUT} cursor-not-allowed opacity-70`}
             />
           </div>
         </div>
 
         {action?.error ? (
-          <p className="mt-1 text-sm text-red-600">{action.error}</p>
+          <p className="mt-3 text-sm text-red-600">{action.error}</p>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={state !== 'idle'}
-          className="btn btn-dark !px-5 !py-2.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed mt-6"
-        >
-          {state !== 'idle' ? 'Updating' : 'Update'}
-        </button>
+        <div className="mt-6">
+          <button
+            type="submit"
+            disabled={state !== 'idle'}
+            className="btn btn-dark !px-5 !py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {state !== 'idle' ? 'Saving' : 'Save changes'}
+          </button>
+        </div>
       </Form>
-    </div>
+    </AccountCard>
   );
 }

@@ -7,6 +7,7 @@ import {
 } from 'react-router';
 import type {Route} from './+types/account';
 import {CUSTOMER_DETAILS_QUERY} from '~/graphql/customer-account/CustomerDetailsQuery';
+import {IconBag, IconUser, IconPin, IconSignOut} from '~/components/AccountUI';
 
 export function shouldRevalidate() {
   return true;
@@ -34,66 +35,82 @@ export async function loader({context}: Route.LoaderArgs) {
   );
 }
 
+const NAV_BASE =
+  'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors [&>svg]:shrink-0';
+const NAV_INACTIVE = 'text-ink hover:bg-black/[0.04] [&>svg]:text-muted';
+const NAV_ACTIVE = 'bg-mint text-brand-700 [&>svg]:text-brand-700';
+const navCls = ({isActive}: {isActive: boolean}) =>
+  `${NAV_BASE} ${isActive ? NAV_ACTIVE : NAV_INACTIVE}`;
+
 export default function AccountLayout() {
   const {customer} = useLoaderData<typeof loader>();
-
-  const heading = customer
-    ? customer.firstName
-      ? `Welcome, ${customer.firstName}`
-      : `Welcome to your account.`
-    : 'Account Details';
+  const name = [customer.firstName, customer.lastName].filter(Boolean).join(' ');
+  const initials =
+    `${customer.firstName?.charAt(0) ?? ''}${customer.lastName?.charAt(0) ?? ''}` ||
+    'BH';
+  const email = customer.emailAddress?.emailAddress;
 
   return (
-    <section className="bg-paper">
-      <div className="ui-container py-12 md:py-16">
-        <p className="eyebrow text-brand-700">My Account</p>
-        <h1 className="mt-1 text-3xl font-extrabold uppercase tracking-tight text-ink md:text-4xl">
-          {heading}
-        </h1>
-        <AccountMenu />
-        <div className="mt-8">
-          <Outlet context={{customer}} />
+    <section className="bg-[#f2f5f1]">
+      <div className="ui-container py-8 md:py-10">
+        <div className="grid max-w-[1180px] items-start gap-6 md:grid-cols-[256px_minmax(0,1fr)] md:gap-8">
+          {/* Rail */}
+          <nav
+            aria-label="Account"
+            className="h-fit rounded-2xl border border-black/10 bg-white p-3.5 shadow-sm md:sticky md:top-28"
+          >
+            <div className="flex items-center gap-3 border-b border-black/10 px-1.5 pb-4">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-700 text-[13px] font-semibold uppercase text-white">
+                {initials}
+              </span>
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-ink">
+                  {name || 'Your account'}
+                </div>
+                {email ? (
+                  <div className="truncate text-xs text-muted">{email}</div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1 py-3.5">
+              <NavLink to="/account/orders" prefetch="intent" className={navCls}>
+                <IconBag />
+                Orders
+              </NavLink>
+              <NavLink to="/account/profile" prefetch="intent" className={navCls}>
+                <IconUser />
+                Profile
+              </NavLink>
+              <NavLink
+                to="/account/addresses"
+                prefetch="intent"
+                className={navCls}
+              >
+                <IconPin />
+                Addresses
+              </NavLink>
+            </div>
+
+            <div className="border-t border-black/10 pt-2.5">
+              <Form method="POST" action="/account/logout">
+                <button
+                  type="submit"
+                  className={`${NAV_BASE} ${NAV_INACTIVE}`}
+                >
+                  <IconSignOut />
+                  Sign out
+                </button>
+              </Form>
+            </div>
+          </nav>
+
+          {/* Content */}
+          <main className="min-w-0">
+            <Outlet context={{customer}} />
+          </main>
         </div>
       </div>
     </section>
-  );
-}
-
-function AccountMenu() {
-  const tab = ({isActive}: {isActive: boolean}) =>
-    `rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-      isActive
-        ? 'bg-ink text-white'
-        : 'bg-[#f5f5f5] text-ink hover:bg-mint'
-    }`;
-
-  return (
-    <nav
-      role="navigation"
-      className="mt-6 flex flex-wrap items-center gap-2 border-b border-black/10 pb-6"
-    >
-      <NavLink to="/account/orders" className={tab}>
-        Orders
-      </NavLink>
-      <NavLink to="/account/profile" className={tab}>
-        Profile
-      </NavLink>
-      <NavLink to="/account/addresses" className={tab}>
-        Addresses
-      </NavLink>
-      <span className="ml-auto">
-        <Logout />
-      </span>
-    </nav>
-  );
-}
-
-function Logout() {
-  return (
-    <Form method="POST" action="/account/logout">
-      <button type="submit" className="btn btn-outline !px-4 !py-2 text-sm">
-        Sign out
-      </button>
-    </Form>
   );
 }

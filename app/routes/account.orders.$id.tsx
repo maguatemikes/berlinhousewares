@@ -6,6 +6,13 @@ import type {
   OrderQuery,
 } from 'customer-accountapi.generated';
 import {CUSTOMER_ORDER_QUERY} from '~/graphql/customer-account/CustomerOrderQuery';
+import {
+  AccountCard,
+  IconBag,
+  IconPin,
+  IconTruck,
+  StatusChip,
+} from '~/components/AccountUI';
 
 export const meta: Route.MetaFunction = ({data}) => {
   return [{title: `Order ${data?.order?.name}`}];
@@ -88,125 +95,131 @@ export default function OrderRoute() {
     <div>
       <Link
         to="/account/orders"
-        className="text-sm font-semibold text-brand-700 hover:underline"
+        prefetch="intent"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:underline"
       >
         ← Back to orders
       </Link>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <h2 className="text-xl font-bold text-ink">Order {order.name}</h2>
-        <span className="inline-flex items-center rounded-full bg-mint px-2.5 py-1 text-xs font-semibold text-brand-700">
-          {fulfillmentStatus}
-        </span>
-      </div>
-      <p className="mt-1 text-sm text-muted">
-        Placed on {new Date(order.processedAt!).toDateString()}
-      </p>
-      {order.confirmationNumber && (
-        <p className="text-sm text-muted">
-          Confirmation: {order.confirmationNumber}
+      <AccountCard
+        icon={<IconBag />}
+        title={`Order ${order.name}`}
+        action={<StatusChip>{fulfillmentStatus}</StatusChip>}
+      >
+        <p className="mb-4 text-sm text-muted">
+          Placed on {new Date(order.processedAt!).toDateString()}
+          {order.confirmationNumber ? ` · ${order.confirmationNumber}` : ''}
         </p>
-      )}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <div className="divide-y divide-black/10 rounded-2xl border border-black/10">
-            {lineItems.map((lineItem, lineItemIndex) => (
-              // eslint-disable-next-line react/no-array-index-key
-              <OrderLineRow key={lineItemIndex} lineItem={lineItem} />
-            ))}
-          </div>
+        <div className="divide-y divide-black/10">
+          {lineItems.map((lineItem, i) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <OrderLineRow key={i} lineItem={lineItem} />
+          ))}
         </div>
 
-        <div className="flex flex-col gap-6 lg:col-span-1">
-          <div className="rounded-2xl border border-black/10 p-5">
-            {hasDiscount && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted">Discounts</span>
-                <span className="font-semibold text-brand-700">
-                  {discountPercentage ? (
-                    <span>-{discountPercentage}% OFF</span>
-                  ) : (
-                    discountValue && <Money data={discountValue!} />
-                  )}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between text-sm">
-              <span className="text-muted">Subtotal</span>
-              <Money data={order.subtotal!} />
-            </div>
-            <div className="mt-2 flex justify-between text-sm">
-              <span className="text-muted">Tax</span>
-              <Money data={order.totalTax!} />
-            </div>
-            <div className="mt-2 flex justify-between border-t border-black/10 pt-3 text-base font-bold text-ink">
-              <span>Total</span>
+        <div className="ml-auto mt-4 flex max-w-[300px] flex-col gap-2.5 border-t border-black/10 pt-4 text-[13.5px]">
+          {hasDiscount && (
+            <SummaryRow label="Discounts">
+              {discountPercentage ? (
+                <span>-{discountPercentage}% OFF</span>
+              ) : (
+                discountValue && <Money data={discountValue} />
+              )}
+            </SummaryRow>
+          )}
+          <SummaryRow label="Subtotal">
+            <Money data={order.subtotal!} />
+          </SummaryRow>
+          <SummaryRow label="Tax">
+            <Money data={order.totalTax!} />
+          </SummaryRow>
+          <div className="mt-1 flex items-center justify-between gap-5 border-t border-black/10 pt-3 text-[15px] font-semibold text-ink">
+            <span>Total</span>
+            <span className="tabular-nums">
               <Money data={order.totalPrice!} />
-            </div>
+            </span>
           </div>
+        </div>
+      </AccountCard>
 
-          <div className="rounded-2xl border border-black/10 p-5">
-            <h3 className="mb-2 text-sm font-semibold text-ink">
-              Shipping Address
-            </h3>
-            {order?.shippingAddress ? (
-              <address className="text-sm not-italic text-muted">
-                <p>{order.shippingAddress.name}</p>
-                {order.shippingAddress.formatted ? (
-                  <p>{order.shippingAddress.formatted}</p>
-                ) : (
-                  ''
-                )}
-                {order.shippingAddress.formattedArea ? (
-                  <p>{order.shippingAddress.formattedArea}</p>
-                ) : (
-                  ''
-                )}
-              </address>
-            ) : (
-              <p className="text-sm text-muted">No shipping address defined</p>
-            )}
-          </div>
+      {order?.shippingAddress ? (
+        <div className="mt-5">
+          <AccountCard icon={<IconPin />} title="Shipping address">
+            <address className="text-[13.5px] not-italic leading-relaxed text-muted">
+              <span className="block font-semibold text-ink">
+                {order.shippingAddress.name}
+              </span>
+              {order.shippingAddress.formatted ? (
+                <span className="block">{order.shippingAddress.formatted}</span>
+              ) : null}
+              {order.shippingAddress.formattedArea ? (
+                <span className="block">
+                  {order.shippingAddress.formattedArea}
+                </span>
+              ) : null}
+            </address>
+          </AccountCard>
+        </div>
+      ) : null}
 
+      <div className="mt-5">
+        <AccountCard icon={<IconTruck />} title="Delivery">
+          <p className="mb-4 text-sm text-muted">
+            Follow your order status and shipment updates.
+          </p>
           <a
             target="_blank"
             href={order.statusPageUrl}
             rel="noreferrer"
             className="btn btn-dark !px-5 !py-2.5 text-sm"
           >
-            View Order Status →
+            View order status →
           </a>
-        </div>
+        </AccountCard>
       </div>
+    </div>
+  );
+}
+
+function SummaryRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-5 text-muted">
+      <span>{label}</span>
+      <span className="tabular-nums text-ink">{children}</span>
     </div>
   );
 }
 
 function OrderLineRow({lineItem}: {lineItem: OrderLineItemFullFragment}) {
   return (
-    <div
-      key={lineItem.id}
-      className="flex items-center justify-between gap-4 p-4"
-    >
-      <div className="flex min-w-0 items-center gap-4">
-        {lineItem?.image && (
+    <div className="flex items-center gap-4 py-3.5">
+      <div className="h-12 w-12 flex-none overflow-hidden rounded-xl border border-black/10 bg-mint">
+        {lineItem?.image ? (
           <Image
             data={lineItem.image}
-            width={64}
-            height={64}
-            className="h-16 w-16 shrink-0 rounded-xl bg-mint object-cover"
+            aspectRatio="1/1"
+            sizes="48px"
+            className="h-full w-full object-cover"
           />
-        )}
-        <div className="min-w-0">
-          <p className="font-semibold text-ink">{lineItem.title}</p>
-          {lineItem.variantTitle && (
-            <p className="text-sm text-muted">{lineItem.variantTitle}</p>
-          )}
-          <p className="text-sm text-muted">Qty {lineItem.quantity}</p>
-        </div>
+        ) : null}
       </div>
-      <div className="shrink-0 font-semibold text-ink">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-ink">{lineItem.title}</p>
+        {lineItem.variantTitle ? (
+          <p className="text-[12.5px] text-muted">{lineItem.variantTitle}</p>
+        ) : null}
+      </div>
+      <div className="tabular-nums text-[13px] text-muted">
+        Qty {lineItem.quantity}
+      </div>
+      <div className="tabular-nums text-sm font-semibold text-ink">
         <Money data={lineItem.price!} />
       </div>
     </div>

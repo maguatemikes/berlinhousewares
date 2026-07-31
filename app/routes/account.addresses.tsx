@@ -11,12 +11,20 @@ import {
   useOutletContext,
   type Fetcher,
 } from 'react-router';
+import {useEffect, useState} from 'react';
 import type {Route} from './+types/account.addresses';
 import {
   UPDATE_ADDRESS_MUTATION,
   DELETE_ADDRESS_MUTATION,
   CREATE_ADDRESS_MUTATION,
 } from '~/graphql/customer-account/CustomerAddressMutations';
+import {
+  AccountCard,
+  IconPin,
+  IconKebab,
+  ACCOUNT_LABEL,
+  ACCOUNT_INPUT,
+} from '~/components/AccountUI';
 
 export type ActionResponse = {
   addressId?: string | null;
@@ -256,27 +264,278 @@ export async function action({request, context}: Route.ActionArgs) {
   }
 }
 
+type Mode = 'list' | 'new' | {edit: string};
+
 export default function Addresses() {
   const {customer} = useOutletContext<{customer: CustomerFragment}>();
   const {defaultAddress, addresses} = customer;
+  const action = useActionData<ActionResponse>();
+  const [mode, setMode] = useState<Mode>('list');
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+  // Return to the list after any successful create / update / delete.
+  useEffect(() => {
+    if (action && action.error == null) {
+      setMode('list');
+      setOpenMenu(null);
+    }
+  }, [action]);
+
+  const back = () => setMode('list');
+
+  if (mode === 'new') {
+    return (
+      <div>
+        <BackButton onClick={back} />
+        <AccountCard icon={<IconPin />} title="Add address">
+          <NewAddressForm onCancel={back} />
+        </AccountCard>
+      </div>
+    );
+  }
+
+  if (typeof mode === 'object') {
+    const address = addresses.nodes.find((a) => a.id === mode.edit);
+    return (
+      <div>
+        <BackButton onClick={back} />
+        <AccountCard icon={<IconPin />} title="Edit address">
+          {address ? (
+            <AddressForm
+              addressId={address.id}
+              address={address}
+              defaultAddress={defaultAddress}
+            >
+              {({stateForMethod}) => (
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <button
+                    disabled={stateForMethod('PUT') !== 'idle'}
+                    formMethod="PUT"
+                    type="submit"
+                    className="btn btn-dark !px-5 !py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {stateForMethod('PUT') !== 'idle' ? 'Saving' : 'Save address'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={back}
+                    className="btn btn-outline !px-5 !py-2.5 text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </AddressForm>
+          ) : (
+            <p className="text-sm text-muted">Address not found.</p>
+          )}
+        </AccountCard>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h2 className="mb-4 text-xl font-bold text-ink">Addresses</h2>
-      <NewAddressForm key={addresses.nodes.length} />
-      {!addresses.nodes.length ? (
-        <p className="mt-6 text-sm text-muted">You have no addresses saved.</p>
-      ) : (
-        <ExistingAddresses
-          addresses={addresses}
-          defaultAddress={defaultAddress}
+    <>
+      <AccountCard
+        icon={<IconPin />}
+        title="Addresses"
+        flush
+        action={
+          <button
+            type="button"
+            onClick={() => setMode('new')}
+            className="btn btn-outline !px-3.5 !py-1.5 text-xs"
+          >
+            Add address
+          </button>
+        }
+      >
+        {addresses.nodes.length === 0 ? (
+          <div className="px-6 py-14 text-center text-sm text-muted">
+            <p>No saved addresses yet.</p>
+            <button
+              type="button"
+              onClick={() => setMode('new')}
+              className="btn btn-dark mt-6"
+            >
+              Add address
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-black/10">
+            {addresses.nodes.map((address) => (
+              <AddressRow
+                key={address.id}
+                address={address}
+                isDefault={defaultAddress?.id === address.id}
+                open={openMenu === address.id}
+                onToggle={() =>
+                  setOpenMenu((m) => (m === address.id ? null : address.id))
+                }
+                onEdit={() => {
+                  setMode({edit: address.id});
+                  setOpenMenu(null);
+                }}
+                onAction={() => setOpenMenu(null)}
+              />
+            ))}
+          </div>
+        )}
+      </AccountCard>
+
+      {openMenu ? (
+        <button
+          type="button"
+          aria-hidden="true"
+          tabIndex={-1}
+          className="fixed inset-0 z-20 cursor-default"
+          onClick={() => setOpenMenu(null)}
         />
-      )}
+      ) : null}
+    </>
+  );
+}
+
+function BackButton({onClick}: {onClick: () => void}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:underline"
+    >
+      ← Back to addresses
+    </button>
+  );
+}
+
+function addressLine(a: AddressFragment) {
+  return [
+    a.address1,
+    a.address2,
+    [a.city, a.zip].filter(Boolean).join(' '),
+    a.territoryCode,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function HiddenAddressFields({
+  address: a,
+  asDefault,
+}: {
+  address: AddressFragment;
+  asDefault?: boolean;
+}) {
+  return (
+    <>
+      <input type="hidden" name="addressId" value={a.id} />
+      <input type="hidden" name="firstName" value={a.firstName ?? ''} />
+      <input type="hidden" name="lastName" value={a.lastName ?? ''} />
+      <input type="hidden" name="company" value={a.company ?? ''} />
+      <input type="hidden" name="address1" value={a.address1 ?? ''} />
+      <input type="hidden" name="address2" value={a.address2 ?? ''} />
+      <input type="hidden" name="city" value={a.city ?? ''} />
+      <input type="hidden" name="zoneCode" value={a.zoneCode ?? ''} />
+      <input type="hidden" name="zip" value={a.zip ?? ''} />
+      <input type="hidden" name="territoryCode" value={a.territoryCode ?? ''} />
+      <input type="hidden" name="phoneNumber" value={a.phoneNumber ?? ''} />
+      {asDefault ? (
+        <input type="hidden" name="defaultAddress" value="on" />
+      ) : null}
+    </>
+  );
+}
+
+function AddressRow({
+  address: a,
+  isDefault,
+  open,
+  onToggle,
+  onEdit,
+  onAction,
+}: {
+  address: AddressFragment;
+  isDefault: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onAction: () => void;
+}) {
+  const name = [a.firstName, a.lastName].filter(Boolean).join(' ') || 'Address';
+  const item =
+    'block w-full rounded-lg px-3 py-2 text-left text-[13.5px] font-medium';
+  return (
+    <div className="flex items-start gap-4 px-5 py-4 md:px-6">
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-2 text-[14.5px] font-semibold text-ink">
+          {name}
+          {isDefault ? (
+            <span className="rounded-full bg-brand-700 px-2 py-0.5 text-[10.5px] font-semibold text-white">
+              Default
+            </span>
+          ) : null}
+        </p>
+        <p className="mt-1 text-[13px] leading-relaxed text-muted">
+          {addressLine(a)}
+        </p>
+      </div>
+
+      <div className="relative flex-none">
+        <button
+          type="button"
+          aria-label="Address options"
+          aria-haspopup="true"
+          aria-expanded={open}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+          className="grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:bg-neutral-100 hover:text-ink aria-expanded:bg-neutral-100 aria-expanded:text-ink"
+        >
+          <IconKebab />
+        </button>
+        {open ? (
+          <div
+            role="menu"
+            className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-[172px] rounded-[13px] border border-black/15 bg-white p-1.5 shadow-lg"
+          >
+            {!isDefault ? (
+              <Form onSubmit={onAction}>
+                <HiddenAddressFields address={a} asDefault />
+                <button
+                  type="submit"
+                  formMethod="PUT"
+                  className={`${item} text-ink hover:bg-neutral-100`}
+                >
+                  Make default
+                </button>
+              </Form>
+            ) : null}
+            <button
+              type="button"
+              onClick={onEdit}
+              className={`${item} text-ink hover:bg-neutral-100`}
+            >
+              Edit
+            </button>
+            <Form onSubmit={onAction}>
+              <input type="hidden" name="addressId" value={a.id} />
+              <button
+                type="submit"
+                formMethod="DELETE"
+                className={`${item} text-red-600 hover:bg-red-50`}
+              >
+                Delete
+              </button>
+            </Form>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
 
-function NewAddressForm() {
+function NewAddressForm({onCancel}: {onCancel: () => void}) {
   const newAddress = {
     address1: '',
     address2: '',
@@ -298,60 +557,25 @@ function NewAddressForm() {
       defaultAddress={null}
     >
       {({stateForMethod}) => (
-        <div className="mt-5">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <button
             disabled={stateForMethod('POST') !== 'idle'}
             formMethod="POST"
             type="submit"
             className="btn btn-dark !px-5 !py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {stateForMethod('POST') !== 'idle' ? 'Creating' : 'Create'}
+            {stateForMethod('POST') !== 'idle' ? 'Adding' : 'Add address'}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="btn btn-outline !px-5 !py-2.5 text-sm"
+          >
+            Cancel
           </button>
         </div>
       )}
     </AddressForm>
-  );
-}
-
-function ExistingAddresses({
-  addresses,
-  defaultAddress,
-}: Pick<CustomerFragment, 'addresses' | 'defaultAddress'>) {
-  return (
-    <div className="mt-8">
-      <h3 className="mb-4 text-sm font-semibold text-ink">Existing addresses</h3>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {addresses.nodes.map((address) => (
-          <AddressForm
-            key={address.id}
-            addressId={address.id}
-            address={address}
-            defaultAddress={defaultAddress}
-          >
-            {({stateForMethod}) => (
-              <div className="mt-5 flex items-center gap-4">
-                <button
-                  disabled={stateForMethod('PUT') !== 'idle'}
-                  formMethod="PUT"
-                  type="submit"
-                  className="btn btn-outline !px-4 !py-2 text-sm disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {stateForMethod('PUT') !== 'idle' ? 'Saving' : 'Save'}
-                </button>
-                <button
-                  disabled={stateForMethod('DELETE') !== 'idle'}
-                  formMethod="DELETE"
-                  type="submit"
-                  className="text-sm font-semibold text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {stateForMethod('DELETE') !== 'idle' ? 'Deleting' : 'Delete'}
-                </button>
-              </div>
-            )}
-          </AddressForm>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -372,26 +596,11 @@ export function AddressForm({
   const action = useActionData<ActionResponse>();
   const error = action?.error?.[addressId];
   const isDefaultAddress = defaultAddress?.id === addressId;
-  const isNewAddress = addressId === 'NEW_ADDRESS_ID';
-  const inputClass =
-    'w-full rounded-2xl border border-black/15 bg-white px-4 py-2.5 text-sm text-ink placeholder:text-muted transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200';
-  const labelClass = 'mb-1.5 block text-sm font-semibold text-ink';
+  const inputClass = ACCOUNT_INPUT;
+  const labelClass = ACCOUNT_LABEL;
   return (
-    <Form
-      id={addressId}
-      className="max-w-2xl rounded-2xl border border-black/10 p-5"
-    >
+    <Form id={addressId}>
       <input type="hidden" name="addressId" defaultValue={addressId} />
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-ink">
-          {isNewAddress ? 'Create address' : 'Edit address'}
-        </h3>
-        {isDefaultAddress ? (
-          <span className="inline-flex items-center rounded-full bg-mint px-2.5 py-1 text-xs font-semibold text-brand-700">
-            Default
-          </span>
-        ) : null}
-      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="firstName" className={labelClass}>

@@ -1,20 +1,14 @@
-import {
-  Link,
-  useLoaderData,
-  useNavigation,
-  useSearchParams,
-} from 'react-router';
+import {Link, useLoaderData} from 'react-router';
 import type {Route} from './+types/account.orders._index';
-import {useRef} from 'react';
 import {
   Money,
+  Image,
   getPaginationVariables,
   flattenConnection,
 } from '@shopify/hydrogen';
 import {
   buildOrderSearchQuery,
   parseOrderFilters,
-  ORDER_FILTER_FIELDS,
   type OrderFilterParams,
 } from '~/lib/orderFilters';
 import {CUSTOMER_ORDERS_QUERY} from '~/graphql/customer-account/CustomerOrdersQuery';
@@ -23,6 +17,7 @@ import type {
   OrderItemFragment,
 } from 'customer-accountapi.generated';
 import {PaginatedResourceSection} from '~/components/PaginatedResourceSection';
+import {AccountCard, IconBag, StatusChip} from '~/components/AccountUI';
 
 type OrdersLoaderData = {
   customer: CustomerOrdersFragment;
@@ -61,203 +56,89 @@ export async function loader({request, context}: Route.LoaderArgs) {
 export default function Orders() {
   const {customer, filters} = useLoaderData<OrdersLoaderData>();
   const {orders} = customer;
-
-  return (
-    <div>
-      <OrderSearchForm currentFilters={filters} />
-      <OrdersTable orders={orders} filters={filters} />
-    </div>
-  );
-}
-
-function OrdersTable({
-  orders,
-  filters,
-}: {
-  orders: CustomerOrdersFragment['orders'];
-  filters: OrderFilterParams;
-}) {
   const hasFilters = !!(filters.name || filters.confirmationNumber);
 
   return (
-    <div aria-live="polite">
+    <AccountCard icon={<IconBag />} title="Orders" flush>
       {orders?.nodes.length ? (
-        <PaginatedResourceSection connection={orders}>
-          {({node: order}) => <OrderItem key={order.id} order={order} />}
+        <PaginatedResourceSection
+          connection={orders}
+          resourcesClassName="divide-y divide-black/10"
+        >
+          {({node: order}) => <OrderRow key={order.id} order={order} />}
         </PaginatedResourceSection>
       ) : (
-        <EmptyOrders hasFilters={hasFilters} />
-      )}
-    </div>
-  );
-}
-
-function EmptyOrders({hasFilters = false}: {hasFilters?: boolean}) {
-  return (
-    <div className="py-12 text-center">
-      {hasFilters ? (
-        <>
-          <p className="text-muted">No orders found matching your search.</p>
-          <Link to="/account/orders" className="btn btn-dark mt-6">
-            Clear filters
-          </Link>
-        </>
-      ) : (
-        <>
-          <p className="text-muted">You haven&apos;t placed any orders yet.</p>
-          <Link to="/collections" className="btn btn-dark mt-6">
-            Start shopping
-          </Link>
-        </>
-      )}
-    </div>
-  );
-}
-
-function OrderSearchForm({
-  currentFilters,
-}: {
-  currentFilters: OrderFilterParams;
-}) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigation = useNavigation();
-  const isSearching =
-    navigation.state !== 'idle' &&
-    navigation.location?.pathname?.includes('orders');
-  const formRef = useRef<HTMLFormElement>(null);
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const params = new URLSearchParams();
-
-    const name = formData.get(ORDER_FILTER_FIELDS.NAME)?.toString().trim();
-    const confirmationNumber = formData
-      .get(ORDER_FILTER_FIELDS.CONFIRMATION_NUMBER)
-      ?.toString()
-      .trim();
-
-    if (name) params.set(ORDER_FILTER_FIELDS.NAME, name);
-    if (confirmationNumber)
-      params.set(ORDER_FILTER_FIELDS.CONFIRMATION_NUMBER, confirmationNumber);
-
-    setSearchParams(params);
-  };
-
-  const hasFilters = currentFilters.name || currentFilters.confirmationNumber;
-
-  return (
-    <form
-      ref={formRef}
-      onSubmit={handleSubmit}
-      className="mb-8 max-w-3xl rounded-2xl border border-black/10 bg-[#f5f5f5] p-4"
-      aria-label="Search orders"
-    >
-      <p className="eyebrow mb-3 text-brand-700">Filter orders</p>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="flex-1">
-          <label
-            htmlFor={ORDER_FILTER_FIELDS.NAME}
-            className="mb-1.5 block text-sm font-semibold text-ink"
-          >
-            Order #
-          </label>
-          <input
-            id={ORDER_FILTER_FIELDS.NAME}
-            type="search"
-            name={ORDER_FILTER_FIELDS.NAME}
-            placeholder="Order #"
-            aria-label="Order number"
-            defaultValue={currentFilters.name || ''}
-            className="w-full rounded-2xl border border-black/15 bg-white px-4 py-2.5 text-sm text-ink placeholder:text-muted transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
-          />
-        </div>
-        <div className="flex-1">
-          <label
-            htmlFor={ORDER_FILTER_FIELDS.CONFIRMATION_NUMBER}
-            className="mb-1.5 block text-sm font-semibold text-ink"
-          >
-            Confirmation #
-          </label>
-          <input
-            id={ORDER_FILTER_FIELDS.CONFIRMATION_NUMBER}
-            type="search"
-            name={ORDER_FILTER_FIELDS.CONFIRMATION_NUMBER}
-            placeholder="Confirmation #"
-            aria-label="Confirmation number"
-            defaultValue={currentFilters.confirmationNumber || ''}
-            className="w-full rounded-2xl border border-black/15 bg-white px-4 py-2.5 text-sm text-ink placeholder:text-muted transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
-          />
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            disabled={isSearching}
-            className="btn btn-dark !px-5 !py-2.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {isSearching ? 'Searching' : 'Search'}
-          </button>
-          {hasFilters && (
-            <button
-              type="button"
-              disabled={isSearching}
-              onClick={() => {
-                setSearchParams(new URLSearchParams());
-                formRef.current?.reset();
-              }}
-              className="btn btn-outline !px-5 !py-2.5 text-sm disabled:opacity-40"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      </div>
-    </form>
-  );
-}
-
-function OrderItem({order}: {order: OrderItemFragment}) {
-  const fulfillmentStatus = flattenConnection(order.fulfillments)[0]?.status;
-  return (
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/10 p-5 transition hover:border-black/25">
-      <div>
-        <Link
-          to={`/account/orders/${btoa(order.id)}`}
-          className="font-bold text-ink"
-        >
-          #{order.number}
-        </Link>
-        <p className="text-sm text-muted">
-          {new Date(order.processedAt).toDateString()}
-        </p>
-        {order.confirmationNumber && (
-          <p className="text-xs text-muted">
-            Confirmation: {order.confirmationNumber}
+        <div className="px-6 py-14 text-center text-sm text-muted">
+          <p>
+            {hasFilters
+              ? 'No orders found matching your search.'
+              : 'You haven’t placed any orders yet.'}
           </p>
-        )}
-      </div>
+          <Link
+            to={hasFilters ? '/account/orders' : '/collections'}
+            className="btn btn-dark mt-6"
+          >
+            {hasFilters ? 'Clear filters' : 'Start shopping'}
+          </Link>
+        </div>
+      )}
+    </AccountCard>
+  );
+}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center rounded-full bg-mint px-2.5 py-1 text-xs font-semibold text-brand-700">
-          {order.financialStatus}
-        </span>
-        {fulfillmentStatus && (
-          <span className="inline-flex items-center rounded-full bg-mint px-2.5 py-1 text-xs font-semibold text-brand-700">
-            {fulfillmentStatus}
+function OrderRow({order}: {order: OrderItemFragment}) {
+  const fulfillment = flattenConnection(order.fulfillments)[0]?.status;
+  const items = order.lineItems?.nodes ?? [];
+  return (
+    <Link
+      to={`/account/orders/${btoa(order.id)}`}
+      prefetch="intent"
+      className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-neutral-50 md:gap-5 md:px-6"
+    >
+      {/* thumbnail lane (fixed width → columns line up) */}
+      <div className="flex w-[92px] flex-none items-center">
+        {items.slice(0, 3).map((it, i) => (
+          <span
+            key={i}
+            className="-ml-[18px] h-[42px] w-[42px] flex-none overflow-hidden rounded-[11px] border-2 border-white bg-mint shadow-sm first:ml-0"
+          >
+            {it.image ? (
+              <Image
+                data={it.image}
+                aspectRatio="1/1"
+                sizes="42px"
+                className="h-full w-full object-cover"
+              />
+            ) : null}
           </span>
-        )}
+        ))}
       </div>
 
-      <div className="flex items-center gap-3">
-        <Money data={order.totalPrice} className="font-semibold text-ink" />
-        <Link
-          to={`/account/orders/${btoa(order.id)}`}
-          className="btn btn-outline !px-4 !py-2 text-sm"
-        >
-          View order
-        </Link>
+      {/* info */}
+      <div className="min-w-0 flex-1">
+        <div className="text-[14.5px] font-semibold tracking-tight text-ink">
+          #{order.number}
+        </div>
+        <div className="mt-0.5 truncate text-[12.5px] text-muted">
+          {new Date(order.processedAt).toDateString()}
+          {order.confirmationNumber ? ` · ${order.confirmationNumber}` : ''}
+        </div>
       </div>
-    </div>
+
+      {/* status */}
+      <div className="hidden w-[160px] flex-none flex-wrap gap-1.5 sm:flex">
+        <StatusChip>{order.financialStatus}</StatusChip>
+        {fulfillment ? <StatusChip>{fulfillment}</StatusChip> : null}
+      </div>
+
+      {/* price */}
+      <div className="w-[92px] flex-none text-right text-[14.5px] font-semibold tabular-nums text-ink">
+        <Money data={order.totalPrice} />
+      </div>
+
+      <span className="flex-none text-[13px] font-semibold text-brand-700">
+        View
+      </span>
+    </Link>
   );
 }
