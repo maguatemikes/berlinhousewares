@@ -79,21 +79,47 @@ function loadDeferredData({context}: Route.LoaderArgs) {
 export default function Blog() {
   const {blog} = useLoaderData<typeof loader>();
   const {articles} = blog;
+  const isEmpty = articles.nodes.length === 0;
 
   return (
-    <div className="blog">
-      <h1>{blog.title}</h1>
-      <div className="blog-grid">
-        <PaginatedResourceSection<ArticleItemFragment> connection={articles}>
-          {({node: article, index}) => (
-            <ArticleItem
-              article={article}
-              key={article.id}
-              loading={index < 2 ? 'eager' : 'lazy'}
-            />
+    <div className="bg-paper">
+      {/* Header */}
+      <section className="bg-mint">
+        <div className="ui-container py-16 md:py-24">
+          <Link
+            to="/blogs"
+            prefetch="intent"
+            className="eyebrow text-brand-700 transition-colors hover:text-brand-800"
+          >
+            ← Journal
+          </Link>
+          <h1 className="mt-3 max-w-3xl text-4xl font-extrabold uppercase leading-tight tracking-tight md:text-6xl">
+            {blog.title}
+          </h1>
+        </div>
+      </section>
+
+      {/* Articles */}
+      <section className="bg-paper">
+        <div className="ui-container py-16 md:py-24">
+          {isEmpty ? (
+            <EmptyState />
+          ) : (
+            <PaginatedResourceSection<ArticleItemFragment>
+              connection={articles}
+              resourcesClassName="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3"
+            >
+              {({node: article, index}) => (
+                <ArticleItem
+                  article={article}
+                  key={article.id}
+                  loading={index < 3 ? 'eager' : 'lazy'}
+                />
+              )}
+            </PaginatedResourceSection>
           )}
-        </PaginatedResourceSection>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -111,21 +137,49 @@ function ArticleItem({
     day: 'numeric',
   }).format(new Date(article.publishedAt!));
   return (
-    <div className="blog-article" key={article.id}>
-      <Link to={`/blogs/${article.blog.handle}/${article.handle}`}>
-        {article.image && (
-          <div className="blog-article-image">
-            <Image
-              alt={article.image.altText || article.title}
-              aspectRatio="3/2"
-              data={article.image}
-              loading={loading}
-              sizes="(min-width: 768px) 50vw, 100vw"
-            />
+    <Link
+      to={`/blogs/${article.blog.handle}/${article.handle}`}
+      prefetch="intent"
+      className="group block"
+    >
+      <div className="relative aspect-[3/2] overflow-hidden rounded-2xl bg-mint">
+        {article.image ? (
+          <Image
+            alt={article.image.altText || article.title}
+            aspectRatio="3/2"
+            data={article.image}
+            loading={loading}
+            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="grid h-full place-items-center text-brand-600">
+            <span className="text-sm font-bold lowercase">berlinhouseware</span>
           </div>
         )}
-        <h3>{article.title}</h3>
-        <small>{publishedAt}</small>
+      </div>
+      <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-brand-700">
+        {publishedAt}
+      </p>
+      <h3 className="mt-1 text-lg font-bold leading-snug text-ink group-hover:underline">
+        {article.title}
+      </h3>
+    </Link>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="mx-auto max-w-md rounded-3xl bg-mint px-8 py-16 text-center">
+      <h2 className="text-2xl font-extrabold uppercase tracking-tight text-ink">
+        Coming soon
+      </h2>
+      <p className="mt-3 text-sm text-muted">
+        No stories here yet — we&apos;re working on the first ones. Explore the
+        collection while you wait.
+      </p>
+      <Link to="/collections/all" className="btn btn-dark mt-8">
+        Shop the collection
       </Link>
     </div>
   );
