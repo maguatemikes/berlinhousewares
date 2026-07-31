@@ -12,6 +12,14 @@ export const ORDER_ITEM_FRAGMENT = `#graphql
         status
       }
     }
+    lineItems(first: 3) {
+      nodes {
+        image {
+          url
+          altText
+        }
+      }
+    }
     id
     number
     confirmationNumber
