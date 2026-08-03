@@ -52,6 +52,75 @@ const FAQS = [
   },
 ];
 
+/**
+ * Physical locations shown on the consignment page — inspired by the vendor
+ * pages of multi-store consignors (e.g. staintons.com/become-a-vendor): sellers
+ * see the real spaces (and foot traffic) their pieces reach, plus where they can
+ * hand items over instead of shipping.
+ *
+ * ⚠️ PLACEHOLDER DATA — replace `address`, `hours`, and `mapsUrl` with the real
+ * store details before this ships. Leave `mapsUrl` empty to hide the directions
+ * link. Add/remove entries freely; the grid reflows.
+ */
+const LOCATIONS: Array<{
+  name: string;
+  address: string[];
+  hours: string;
+  dropOff?: boolean;
+  mapsUrl?: string;
+}> = [
+  {
+    name: 'Berlin Houseware',
+    address: ['41 Clementon Rd', 'Berlin, NJ 08009'],
+    // ⚠️ TODO: confirm real opening hours (placeholder below).
+    hours: '[Add opening hours]',
+    dropOff: true,
+    mapsUrl:
+      'https://www.google.com/maps/search/?api=1&query=41+Clementon+Rd%2C+Berlin%2C+NJ+08009',
+  },
+];
+
+/**
+ * "Why sell with us" value props — the content adapted from a classic vendor
+ * "Why Us?" grid, reworded for a new + pre-loved homeware marketplace. Rendered
+ * with the site's consistent brand-check affordance (NOT a different decorative
+ * icon per item — see docs/design-system.md: icons are functional-only).
+ */
+const WHY_US = [
+  {
+    t: 'Real marketing muscle',
+    d: 'We photograph every piece and actively promote it to buyers already shopping the store.',
+  },
+  {
+    t: 'Fully managed',
+    d: 'Inspection, pricing, listing, and shipping — all handled for you, start to finish.',
+  },
+  {
+    t: 'A real team behind you',
+    d: 'Every submission is reviewed by our team within 48 hours — no guesswork, no bots.',
+  },
+  {
+    t: 'Sells year-round',
+    d: 'New and pre-loved list side by side, so demand never waits for a season.',
+  },
+  {
+    t: 'A trusted name',
+    d: 'Every item is inspected and authenticated before it goes live next to our new arrivals.',
+  },
+  {
+    t: 'Effortless listing',
+    d: 'Snap, submit, and track everything from one simple seller portal.',
+  },
+  {
+    t: 'A growing community',
+    d: 'Join a marketplace of sellers reaching real buyers every day.',
+  },
+  {
+    t: 'Showcased beautifully',
+    d: 'Your pieces sit right alongside our new collection — never a hidden secondhand aisle.',
+  },
+];
+
 export const meta: Route.MetaFunction = () => {
   return [
     {title: 'Sell & Consign Homeware | Berlin Houseware — New & Pre-Loved'},
@@ -83,7 +152,9 @@ export default function Consign() {
   return (
     <div className="bg-paper">
       <ConsignHero />
+      <WhySellWithUs />
       <HowItWorks />
+      <Locations />
       <PayoutTiers />
 
       {/* Consignor portal CTA */}
@@ -106,13 +177,13 @@ export default function Consign() {
                 'Track your sales, cash out or store credit',
               ].map((t) => (
                 <li key={t} className="flex items-center gap-3 text-sm">
-                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-700 text-white">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4">
+                  <span className="shrink-0 text-brand-600">
+                    <svg viewBox="0 0 24 24" className="h-5 w-5">
                       <path
                         d="m5 13 4 4L19 7"
                         fill="none"
                         stroke="currentColor"
-                        strokeWidth="3"
+                        strokeWidth="2.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
@@ -210,6 +281,160 @@ function HowItWorks() {
             <p className="mt-2 text-sm text-muted">{s.d}</p>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+function WhySellWithUs() {
+  return (
+    <section className="bg-mint">
+      <div className="ui-container py-16 md:py-24">
+        <div className="mb-12 max-w-2xl">
+          <span className="eyebrow text-brand-700">Why sell with us</span>
+          <h2 className="mt-3 text-4xl font-extrabold uppercase tracking-tight md:text-5xl">
+            Why Berlin Houseware?
+          </h2>
+          <p className="mt-4 max-w-xl text-muted">
+            More than a place to offload what you no longer use — a fully managed,
+            year-round marketplace that puts your pieces in front of real buyers.
+          </p>
+        </div>
+
+        <div className="grid border-t border-black/10 sm:grid-cols-2">
+          {WHY_US.map((b, i) => (
+            <div
+              key={b.t}
+              className="group flex gap-5 border-b border-black/10 py-7 sm:[&:nth-last-child(-n+2)]:border-b-0 sm:odd:pr-10 sm:even:border-l sm:even:border-black/10 sm:even:pl-10"
+            >
+              <span className="w-8 shrink-0 text-2xl font-extrabold leading-none tabular-nums text-brand-600/25 transition-colors duration-200 group-hover:text-brand-600">
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <div>
+                <h3 className="text-[15px] font-bold uppercase tracking-tight text-ink">
+                  {b.t}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{b.d}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Locations() {
+  return (
+    <section className="bg-mint">
+      <div className="ui-container grid gap-10 py-16 md:py-24 lg:grid-cols-[1fr_1fr] lg:items-center lg:gap-16">
+        <div className="max-w-xl">
+          <span className="eyebrow text-brand-700">Where your pieces sell</span>
+          <h2 className="mt-3 text-4xl font-extrabold uppercase tracking-tight md:text-5xl">
+            Real spaces, real foot traffic
+          </h2>
+          <p className="mt-4 text-muted">
+            Your consigned homeware doesn’t just sit in a listing — it reaches
+            buyers browsing our store in person. Prefer to hand items over rather
+            than ship? Drop them off at the location on the right.
+          </p>
+          <p className="mt-6 text-sm text-muted">
+            Not nearby?{' '}
+            <a
+              href="#submit"
+              className="font-semibold text-brand-700 underline-offset-2 hover:underline"
+            >
+              Create a seller account
+            </a>{' '}
+            and ship your items in — we cover it.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+          {LOCATIONS.map((loc) => (
+            <div
+              key={loc.name}
+              className="flex flex-col rounded-3xl bg-paper p-6 shadow-sm ring-1 ring-black/5"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-mint text-brand-700"
+                  aria-hidden="true"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                </span>
+                {loc.dropOff ? (
+                  <span className="rounded-full bg-brand-700 px-3 py-1 text-xs font-semibold text-white">
+                    Drop-off
+                  </span>
+                ) : null}
+              </div>
+
+              <h3 className="mt-4 text-lg font-bold uppercase tracking-tight">
+                {loc.name}
+              </h3>
+
+              <address className="mt-2 not-italic text-sm leading-relaxed text-muted">
+                {loc.address.map((line) => (
+                  <span key={line} className="block">
+                    {line}
+                  </span>
+                ))}
+              </address>
+
+              <p className="mt-3 flex items-center gap-2 text-sm text-ink">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4 shrink-0 text-brand-600"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+                {loc.hours}
+              </p>
+
+              {loc.mapsUrl ? (
+                <a
+                  href={loc.mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-outline mt-5 !py-2 text-sm"
+                >
+                  Get directions
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5" />
+                  </svg>
+                </a>
+              ) : null}
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
