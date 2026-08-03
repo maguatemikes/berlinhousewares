@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {Image} from '@shopify/hydrogen';
 
 type GalleryImage = {
@@ -20,6 +20,13 @@ export function ProductGallery({
 }) {
   const [active, setActive] = useState(0);
 
+  // Refs to each rail *container* (desktop vertical / mobile horizontal). We
+  // scroll the active child into view — a container ref avoids the shared-ref
+  // pitfall of putting one ref on whichever button is active.
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const mobileRailRef = useRef<HTMLDivElement | null>(null);
+  const didMountRef = useRef(false);
+
   // When the selected variant changes, jump the gallery to that variant's image.
   // Only re-runs when the variant image URL changes (not on every images rebuild),
   // so manually clicking a thumbnail isn't instantly overridden.
@@ -29,6 +36,35 @@ export function ProductGallery({
     if (idx >= 0) setActive(idx);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeImageUrl]);
+
+  // Slide the rail so the active thumbnail is in view whenever the selection
+  // changes (swatch, arrow, or thumb tap). Skips the first mount so it never
+  // scrolls the page on load, and honours reduced-motion. Reacts to `active`
+  // only — the variant→image logic above is left exactly as-is.
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    const reduce =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const opts: ScrollIntoViewOptions = {
+      behavior: reduce ? 'auto' : 'smooth',
+      block: 'nearest',
+      inline: 'nearest',
+    };
+    const reveal = (rail: HTMLDivElement | null) => {
+      // Skip a rail that's display:none (offsetParent === null) — only the rail
+      // for the current breakpoint should scroll, and calling scrollIntoView on a
+      // hidden element is a no-op that can interfere with the visible one.
+      if (!rail || rail.offsetParent === null) return;
+      const idx = Math.min(active, rail.children.length - 1);
+      (rail.children[idx] as HTMLElement | undefined)?.scrollIntoView(opts);
+    };
+    reveal(railRef.current);
+    reveal(mobileRailRef.current);
+  }, [active]);
 
   if (!images.length) {
     return (
@@ -49,7 +85,10 @@ export function ProductGallery({
         {/* Vertical thumbnail rail (desktop) — always visible; a single-image
             product shows its main image as the one thumbnail. Caps at ~4 then
             scrolls (scrollbar hidden). */}
-        <div className="no-scrollbar hidden max-h-[356px] w-20 shrink-0 flex-col gap-3 overflow-y-auto md:flex">
+        <div
+          ref={railRef}
+          className="no-scrollbar hidden max-h-[356px] w-20 shrink-0 flex-col gap-3 overflow-y-auto md:flex"
+        >
           {images.map((img, i) => (
               <button
                 key={img.id ?? i}
@@ -97,7 +136,10 @@ export function ProductGallery({
 
       {/* Horizontal thumbnails (mobile) */}
       {images.length > 1 && (
-        <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto md:hidden">
+        <div
+          ref={mobileRailRef}
+          className="no-scrollbar mt-3 flex gap-3 overflow-x-auto md:hidden"
+        >
           {images.map((img, i) => (
             <button
               key={img.id ?? i}

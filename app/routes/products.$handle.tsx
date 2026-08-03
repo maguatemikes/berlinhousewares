@@ -218,7 +218,12 @@ export default function Product() {
       }
     : null;
 
-  // Build the gallery: current variant image first, then remaining product images
+  // Build the gallery in a STABLE order (product images as-is) so switching
+  // variants doesn't reshuffle the thumbnails. The selected variant's image stays
+  // in its natural position — ProductGallery highlights it and slides the rail to
+  // it via `activeImageUrl`, instead of hoisting it to the top on every swatch
+  // change. If the variant's image isn't among the product images, it's appended
+  // so it's still shown.
   const galleryImages = (() => {
     const out: Array<{
       id?: string | null;
@@ -228,15 +233,14 @@ export default function Product() {
       height?: number | null;
     }> = [];
     const seen = new Set<string>();
-    if (selectedVariant?.image?.url) {
-      out.push(selectedVariant.image);
-      seen.add(selectedVariant.image.url);
-    }
     for (const node of product.images?.nodes ?? []) {
       if (node?.url && !seen.has(node.url)) {
         out.push(node);
         seen.add(node.url);
       }
+    }
+    if (selectedVariant?.image?.url && !seen.has(selectedVariant.image.url)) {
+      out.push(selectedVariant.image);
     }
     return out;
   })();
