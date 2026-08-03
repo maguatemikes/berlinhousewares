@@ -207,30 +207,39 @@ export default function Consign() {
 /* -------------------------------------------------------------------------- */
 function ConsignHero() {
   return (
-    <section className="relative overflow-hidden bg-ink text-white">
-      <div
-        className="pointer-events-none absolute -left-20 top-1/2 h-96 w-96 -translate-y-1/2 rounded-full bg-brand-600/40 blur-3xl"
-        aria-hidden="true"
-      />
-      <div className="ui-container relative py-20 md:py-28">
-        <span className="eyebrow text-brand-400">New &amp; pre-loved · Consignment</span>
-        <h1 className="mt-4 max-w-3xl text-5xl font-extrabold uppercase leading-[0.95] tracking-tight md:text-7xl">
-          Sell your homeware where{' '}
-          <span className="text-brand-400">buyers already shop.</span>
-        </h1>
-        <p className="mt-6 max-w-xl text-lg text-white/70">
-          Berlin Houseware is the curated marketplace for new and verified
-          pre-loved homeware — listed side by side. Send the pieces you no longer
-          use; we photograph, price, list, and ship them to buyers browsing our
-          new collection. You just get paid — up to 80% when it sells.
-        </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <a href="#submit" className="btn btn-brand">
-            Start selling
-          </a>
-          <a href="#how" className="btn btn-ghost">
-            How it works
-          </a>
+    <section className="bg-mint">
+      <div className="ui-container grid items-center gap-10 py-16 md:py-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] lg:gap-16">
+        {/* Left — copy */}
+        <div className="max-w-xl">
+          <span className="eyebrow text-brand-700">
+            New &amp; pre-loved · Consignment
+          </span>
+          <h1 className="mt-3 text-4xl font-extrabold uppercase leading-[0.95] tracking-tight text-ink md:text-5xl">
+            Sell your homeware where{' '}
+            <span className="text-brand-700">buyers already shop.</span>
+          </h1>
+          <p className="mt-5 max-w-md text-base text-ink/70 md:text-lg">
+            Berlin Houseware is the curated marketplace for new and verified
+            pre-loved homeware — listed side by side. Send the pieces you no
+            longer use; we photograph, price, list, and ship. You just get paid —
+            up to 80% when it sells.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a href="#submit" className="btn btn-dark">
+              Start selling
+            </a>
+          </div>
+        </div>
+
+        {/* Right — full photo, uncropped (3:2 frame matches the image) */}
+        <div className="lg:justify-self-end">
+          <img
+            src="/consign-hero.jpg"
+            alt="A consignor photographing pre-loved clothing and homeware to list on Berlin Houseware"
+            loading="eager"
+            decoding="async"
+            className="aspect-[3/2] w-full rounded-3xl object-cover shadow-sm ring-1 ring-black/5"
+          />
         </div>
       </div>
     </section>
@@ -447,7 +456,7 @@ function PayoutTiers() {
     {price: 'Over $150', payout: '80%'},
   ];
   return (
-    <section className="ui-container pb-4">
+    <section className="ui-container py-12 md:py-16">
       <div className="grid gap-4 rounded-3xl bg-brand-700 p-8 text-white md:grid-cols-3 md:p-10">
         {tiers.map((t) => (
           <div key={t.price} className="text-center">
