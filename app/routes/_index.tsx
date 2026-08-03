@@ -238,9 +238,8 @@ function RotatingWord() {
 /* Hero                                                                        */
 /* -------------------------------------------------------------------------- */
 function Hero({collection}: {collection?: FeaturedCollectionFragment}) {
-  const shopTo = collection
-    ? `/collections/${collection.handle}`
-    : '/collections';
+  // The Shop CTA always opens the full catalog, not a featured collection.
+  const shopTo = '/collections/all';
   return (
     <section className="relative min-h-[75vh] w-full overflow-hidden bg-mint md:min-h-[85vh]">
       {/* Sage fallback — shows behind the photo while it loads */}
