@@ -62,8 +62,8 @@ function useFilterState() {
     // Keep our own scroll position (preventScrollReset), then bring the product
     // grid up to the top so the refreshed results are what you land on. Only
     // filter/sort/chip changes go through commit() — pagination doesn't, so
-    // "Load more/previous" is left untouched. Smooth is handled by the global
-    // `scroll-behavior: smooth`; `scroll-mt-*` on the target clears the header.
+    // "Load more/previous" is left untouched. Smoothness comes from the explicit
+    // `behavior: 'smooth'` below (not global CSS); `scroll-mt-*` clears the header.
     navigate(`?${p.toString()}`, {preventScrollReset: true});
     if (typeof document !== 'undefined') {
       document
