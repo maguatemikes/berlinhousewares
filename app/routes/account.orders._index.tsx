@@ -18,6 +18,7 @@ import type {
 } from 'customer-accountapi.generated';
 import {PaginatedResourceSection} from '~/components/PaginatedResourceSection';
 import {AccountCard, IconBag, StatusChip} from '~/components/AccountUI';
+import {getCached, setCached} from '~/lib/accountCache';
 
 type OrdersLoaderData = {
   customer: CustomerOrdersFragment;
@@ -52,6 +53,18 @@ export async function loader({request, context}: Route.LoaderArgs) {
 
   return {customer: data.customer, filters};
 }
+
+// Read-through cache keyed by the URL search, so each distinct filter/
+// pagination combination caches independently and re-entering the same view
+// within the TTL paints instantly. A new search is a cache miss → fresh fetch.
+export async function clientLoader({request, serverLoader}: Route.ClientLoaderArgs) {
+  const key = `orders:${new URL(request.url).search}`;
+  const cached = getCached<OrdersLoaderData>(key);
+  if (cached) return cached;
+  const fresh = (await serverLoader()) as OrdersLoaderData;
+  return setCached(key, fresh);
+}
+clientLoader.hydrate = true as const;
 
 export default function Orders() {
   const {customer, filters} = useLoaderData<OrdersLoaderData>();

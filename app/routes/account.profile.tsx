@@ -15,6 +15,7 @@ import {
   ACCOUNT_LABEL,
   ACCOUNT_INPUT,
 } from '~/components/AccountUI';
+import {clearAccountCache} from '~/lib/accountCache';
 
 export type ActionResponse = {
   error: string | null;
@@ -83,6 +84,14 @@ export async function action({request, context}: Route.ActionArgs) {
       },
     );
   }
+}
+
+// After a profile mutation, drop the cached customer so the parent layout's
+// revalidation (name/initials in the rail) reflects the edit immediately.
+export async function clientAction({serverAction}: Route.ClientActionArgs) {
+  const result = await serverAction();
+  clearAccountCache();
+  return result;
 }
 
 export default function AccountProfile() {
