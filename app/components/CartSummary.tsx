@@ -82,12 +82,15 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
           <button
             type="button"
             onClick={close}
-            className="btn btn-outline w-full"
+            className="btn border-ink/30 text-ink hover:bg-ink/5 w-full"
           >
             Continue Shopping
           </button>
         ) : (
-          <Link to="/collections" className="btn btn-outline w-full">
+          <Link
+            to="/collections"
+            className="btn border-ink/30 text-ink hover:bg-ink/5 w-full"
+          >
             Continue Shopping
           </Link>
         )}
@@ -109,7 +112,11 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 function CartCheckoutButton({checkoutUrl}: {checkoutUrl?: string}) {
   if (!checkoutUrl) return null;
   return (
-    <a href={checkoutUrl} target="_self" className="btn btn-dark w-full">
+    <a
+      href={checkoutUrl}
+      target="_self"
+      className="btn bg-coral text-white hover:bg-coral-dark w-full"
+    >
       Proceed to Checkout →
     </a>
   );
@@ -149,7 +156,7 @@ function CartDiscounts({
 
       {/* Promo code input */}
       <UpdateDiscountForm discountCodes={codes}>
-        <div className="flex items-center gap-2 rounded-full border border-black/15 bg-white pl-4 pr-1.5">
+        <div className="flex items-center gap-2 rounded-2xl border border-black/15 bg-white pl-4 pr-1.5">
           <span className="text-muted" aria-hidden="true">
             <svg viewBox="0 0 24 24" className="h-4 w-4">
               <path

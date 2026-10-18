@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {Link, useLoaderData, useSearchParams} from 'react-router';
 import type {Route} from './+types/sellers.$handle';
 import {ProductItem} from '~/components/ProductItem';
+import {SelectMenu} from '~/components/SelectMenu';
 import {getSeller, type SellerSort} from '~/lib/sellers.server';
 
 export const meta: Route.MetaFunction = ({data}) => {
@@ -165,24 +166,22 @@ function ProductsTab({
           />
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-muted">
-          <span className="whitespace-nowrap">Sort by</span>
-          <select
-            value={sort}
-            onChange={(e) => {
-              const next = new URLSearchParams(searchParams);
-              if (e.target.value === 'default') next.delete('sort');
-              else next.set('sort', e.target.value);
-              setSearchParams(next, {preventScrollReset: true});
-            }}
-            className="!mt-0 !mb-0 rounded-full !border-black/15 bg-white py-2.5 pl-4 pr-8 text-sm font-medium text-ink outline-none focus:!border-brand-500"
-          >
-            <option value="default">Default</option>
-            <option value="price-asc">Price: low to high</option>
-            <option value="price-desc">Price: high to low</option>
-            <option value="title">Title A–Z</option>
-          </select>
-        </label>
+        <SelectMenu
+          label="Sort by"
+          value={sort}
+          options={[
+            {value: 'default', label: 'Default'},
+            {value: 'price-asc', label: 'Price: low to high'},
+            {value: 'price-desc', label: 'Price: high to low'},
+            {value: 'title', label: 'Title A–Z'},
+          ]}
+          onChange={(v) => {
+            const next = new URLSearchParams(searchParams);
+            if (v === 'default') next.delete('sort');
+            else next.set('sort', v);
+            setSearchParams(next, {preventScrollReset: true});
+          }}
+        />
       </div>
 
       {products.length === 0 ? (

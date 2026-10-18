@@ -291,6 +291,20 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
         ...MoneyProductItem
       }
     }
+    selectedOrFirstAvailableVariant {
+      id
+      availableForSale
+    }
+    seller: metafield(namespace: "custom", key: "seller") {
+      reference {
+        ... on Metaobject {
+          handle
+          slug: field(key: "slug") {
+            value
+          }
+        }
+      }
+    }
   }
 ` as const;
 

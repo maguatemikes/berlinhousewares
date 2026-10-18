@@ -69,7 +69,7 @@ export function Header({header, customer, cart}: HeaderProps) {
       <UtilityBar customer={customer} />
 
       <header className="relative z-20 border-b border-black/10 bg-paper">
-        <div className="ui-container flex h-[60px] items-center justify-between gap-4">
+        <div className="ui-container flex items-center justify-between gap-4 py-4">
           {/* Left: mobile toggle + logo */}
           <div className="flex items-center gap-2">
             <HeaderMenuMobileToggle />
@@ -384,7 +384,7 @@ function SearchPill() {
       action="/search"
       method="get"
       role="search"
-      className="hidden h-10 items-center gap-2 rounded-full bg-[#f5f5f5] px-4 focus-within:ring-2 focus-within:ring-brand-400 lg:flex"
+      className="hidden h-10 items-center gap-2 rounded-2xl border-[0.5px] border-black/20 px-4 focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-400/60 lg:flex"
     >
       <SearchIcon className="h-4 w-4 shrink-0 text-muted" />
       <input
@@ -506,7 +506,7 @@ function CartBadge({count}: {count: number}) {
     >
       <BagIcon />
       {count > 0 && (
-        <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-brand-700 px-1 text-[11px] font-bold text-white">
+        <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[11px] font-bold text-white">
           {count}
         </span>
       )}

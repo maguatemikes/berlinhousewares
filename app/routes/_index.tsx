@@ -1,9 +1,8 @@
 import {Await, useLoaderData, Link} from 'react-router';
 import type {Route} from './+types/_index';
-import {Suspense, useEffect, useState} from 'react';
+import {Suspense, useEffect, useRef, useState} from 'react';
 import {Image} from '@shopify/hydrogen';
 import type {
-  FeaturedCollectionFragment,
   RecommendedProductsQuery,
   HomeCollectionsQuery,
 } from 'storefrontapi.generated';
@@ -95,7 +94,7 @@ export default function Homepage() {
   const data = useLoaderData<typeof loader>();
   return (
     <div className="bg-paper">
-      <Hero collection={data.featuredCollection} />
+      <Hero />
       <ValueProps />
       <CategoryTiles collections={data.collections} />
       <TrendingProducts products={data.recommendedProducts} />
@@ -168,122 +167,367 @@ function SectionHead({
 }
 
 /* -------------------------------------------------------------------------- */
-/* Rotating headline word — cycles through product types                       */
+/* Hero                                                                        */
 /* -------------------------------------------------------------------------- */
-const SELL_WORDS = [
-  'Caps',
-  'Bandanas',
-  'Tees',
-  'Sneakers',
-  'Jackets',
-  'Watches',
-  'Anything',
+function Hero() {
+  // The Shop CTA always opens the full catalog, not a featured collection.
+  const shopTo = '/collections/all';
+  return (
+    <section className="relative isolate w-full overflow-hidden">
+      {/* Flat-lay backdrop (shared with the myResale portal) + dark gradient so
+          white copy stays readable — darker on the left (text) than the right. */}
+      <img
+        src="/hero-bg.jpg"
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 -z-10 h-full w-full object-cover"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10 bg-gradient-to-r from-black/85 via-black/60 to-black/35"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10 bg-gradient-to-t from-black/60 via-transparent to-black/20"
+      />
+
+      <div className="ui-container grid items-center gap-8 pt-12 sm:gap-10 sm:pt-14 md:min-h-[85vh] md:grid-cols-2 md:gap-8 md:py-0">
+        {/* Copy */}
+        <div className="max-w-xl">
+          <span className="eyebrow text-brand-300">
+            New Drops · Verified Pre-Loved
+          </span>
+          <h1 className="mt-4 text-5xl font-extrabold uppercase leading-[0.95] tracking-tight text-white md:text-7xl">
+            New &amp;
+            <br />
+            Pre‑Loved
+          </h1>
+          <p className="mt-4 text-lg font-semibold text-brand-300 md:text-xl">
+            Buy, sell &amp; consign — one marketplace.
+          </p>
+          <p className="mt-6 max-w-lg text-base leading-relaxed text-white/75 md:text-lg">
+            Two ways to shop, one marketplace you can trust. Browse brand-new
+            drops right next to verified pre-loved finds — every secondhand
+            piece is hand-inspected and authenticated before it&apos;s listed.
+            Got pieces of your own? Consign them in minutes: we handle the
+            photos, listing, and shipping, and you keep up to 80% when they
+            sell.
+          </p>
+          <div className="mt-10 flex flex-wrap gap-3">
+            <Link
+              to={shopTo}
+              className="btn bg-coral text-white hover:bg-coral-dark"
+            >
+              Shop
+            </Link>
+            <Link
+              to="/consign"
+              className="btn border-white/60 text-white hover:bg-white/10"
+            >
+              Start selling
+            </Link>
+          </div>
+        </div>
+
+        {/* Hand holding phone — the screen runs a live product slider. The PNG's
+            screen is opaque white and nothing overlaps the screen front, so the
+            slider sits ON TOP of it, clipped to the screen rect (measured from
+            the asset: left 10.4% / top 2.3% / 45.8% × 73.9%). */}
+        <div className="self-end">
+          <div
+            className="relative mx-auto w-full max-w-[460px] md:ml-auto md:max-w-[560px]"
+            style={{aspectRatio: '1162 / 1500'}}
+          >
+            <div
+              className="absolute z-20 overflow-hidden bg-white"
+              style={{
+                left: '10.4%',
+                top: '2.3%',
+                width: '45.8%',
+                height: '73.9%',
+                borderRadius: '16px',
+              }}
+            >
+              <PhoneProductCards cards={HERO_CARDS} />
+            </div>
+
+            <img
+              src="/hero-phone.png"
+              alt="Shop Berlin Houseware from your phone"
+              className="pointer-events-none absolute inset-0 z-10 h-full w-full select-none object-contain"
+              draggable={false}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+type HeroCard = {
+  category: string;
+  title: string;
+  img: string;
+};
+
+/** Broad, recognizable category product photos (hot-linked stock imagery) for
+ *  the decorative phone mock-up — deliberately NOT the real catalog, so the
+ *  hero reads as a generic storefront. Clean white-ground shots across the
+ *  headline categories; cohesive regardless of the live inventory. */
+const heroImg = (id: string) =>
+  `https://images.unsplash.com/photo-${id}?w=480&q=75&auto=format`;
+
+const HERO_CARDS: HeroCard[] = [
+  {
+    category: 'Footwear',
+    title: 'Sneakers',
+    img: heroImg('1600185365926-3a2ce3cdb9eb'),
+  },
+  {
+    category: 'Accessories',
+    title: 'Baseball Cap',
+    img: heroImg('1588850561407-ed78c282e89b'),
+  },
+  {
+    category: 'Apparel',
+    title: 'T‑Shirt',
+    img: heroImg('1620799139507-2a76f79a2f4d'),
+  },
+  {
+    category: 'Footwear',
+    title: 'Running Shoes',
+    img: heroImg('1491553895911-0055eca6402d'),
+  },
+  {
+    category: 'Accessories',
+    title: 'Dad Cap',
+    img: heroImg('1521369909029-2afed882baee'),
+  },
+  {
+    category: 'Footwear',
+    title: 'Court Sneakers',
+    img: heroImg('1595950653106-6c9ebd614d3a'),
+  },
 ];
 
-function RotatingWord() {
-  // Duplicate the first word at the end for a seamless, always-upward loop.
-  const items = [...SELL_WORDS, SELL_WORDS[0]];
+/** A mini mobile product page inside the phone screen (mirrors a real PDP):
+ *  header, a product image + option rows, and the brand's two actions. Slides
+ *  horizontally through the products (seamless forward loop). Illustrative. */
+// Fixed design canvas for the mock; scaled to the real phone-screen size so it
+// renders identically at every viewport (the screen rect's aspect is ≈0.48).
+const PHONE_DESIGN_W = 240;
+const PHONE_DESIGN_H = 500;
+
+function PhoneProductCards({cards}: {cards: HeroCard[]}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0);
   const [i, setI] = useState(0);
   const [animate, setAnimate] = useState(true);
 
+  // Auto-advance. The index runs one PAST the end onto a duplicate of the first
+  // slide, so the motion is always forward — never a reverse snap-back.
   useEffect(() => {
-    const id = setInterval(() => setI((v) => v + 1), 2500);
+    if (cards.length <= 1) return;
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    ) {
+      return;
+    }
+    const id = setInterval(() => setI((a) => a + 1), 3200);
     return () => clearInterval(id);
-  }, []);
+  }, [cards.length]);
 
+  // Seamless loop: once the duplicate (index === cards.length) has slid in, jump
+  // back to the real first slide with the transition OFF, then re-enable it.
   useEffect(() => {
-    if (i === SELL_WORDS.length) {
-      // Landed on the duplicate word — after the slide, snap back to index 0
-      // with no transition so the loop is seamless.
+    if (i === cards.length) {
       const t = setTimeout(() => {
         setAnimate(false);
         setI(0);
-      }, 600);
+      }, 700);
       return () => clearTimeout(t);
     }
     if (!animate) {
       const r = requestAnimationFrame(() => setAnimate(true));
       return () => cancelAnimationFrame(r);
     }
-  }, [i, animate]);
+  }, [i, animate, cards.length]);
 
+  // Scale the design canvas to the measured screen width (keeps the mock legible
+  // and overflow-free from desktop down to the smallest phone viewport).
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const update = () => setScale(el.clientWidth / PHONE_DESIGN_W);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  if (!cards.length) return null;
+  // Duplicate the first slide at the end for the always-forward seamless loop.
+  // Carry explicit stable keys so the clone has its own identity (no index key).
+  const slides = [
+    ...cards.map((card) => ({card, key: card.title})),
+    {card: cards[0], key: `${cards[0].title}__loop`},
+  ];
+  const activeDot = i % cards.length;
   return (
-    <span className="inline-block h-[1.3em] overflow-hidden align-bottom text-brand-600">
-      <span
-        className={`flex flex-col will-change-transform ${
-          animate
-            ? 'transition-transform duration-[550ms] ease-[cubic-bezier(0.22,1,0.36,1)]'
-            : ''
-        }`}
-        style={{transform: `translateY(-${(i * 100) / items.length}%)`}}
+    <div
+      ref={rootRef}
+      className="absolute inset-0 overflow-hidden bg-paper"
+      aria-hidden="true"
+    >
+      <div
+        className="flex flex-col bg-paper"
+        style={{
+          width: PHONE_DESIGN_W,
+          height: PHONE_DESIGN_H,
+          transform: `scale(${scale || 1})`,
+          transformOrigin: 'top left',
+          visibility: scale ? 'visible' : 'hidden',
+        }}
       >
-        {items.map((w, k) => (
-          <span
-            key={k}
-            className={`flex h-[1.3em] items-center leading-none ${
-              animate
-                ? 'transition-opacity duration-[550ms] ease-[cubic-bezier(0.22,1,0.36,1)]'
-                : ''
-            } ${k === i ? 'opacity-100' : 'opacity-20'}`}
+        {/* Header — menu · wordmark · bag */}
+        <div className="flex shrink-0 items-center justify-between border-b border-black/10 px-2.5 py-2">
+          <div className="flex items-center gap-1.5">
+            <svg
+              viewBox="0 0 24 24"
+              className="h-3 w-3 text-ink"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+            >
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+            <span className="text-[10px] font-bold lowercase leading-none text-ink">
+              berlin<span className="text-brand-700">houseware</span>
+            </span>
+          </div>
+          <svg
+            viewBox="0 0 24 24"
+            className="h-3.5 w-3.5 text-ink"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            {w}
-          </span>
-        ))}
-      </span>
-    </span>
-  );
-}
+            <circle cx="9" cy="20" r="1.2" />
+            <circle cx="17.5" cy="20" r="1.2" />
+            <path d="M2.5 3.5h2.2l2.1 11a1.6 1.6 0 0 0 1.6 1.3h7.9a1.6 1.6 0 0 0 1.6-1.25L20.8 7H6" />
+          </svg>
+        </div>
 
-/* -------------------------------------------------------------------------- */
-/* Hero                                                                        */
-/* -------------------------------------------------------------------------- */
-function Hero({collection}: {collection?: FeaturedCollectionFragment}) {
-  // The Shop CTA always opens the full catalog, not a featured collection.
-  const shopTo = '/collections/all';
-  return (
-    <section className="relative min-h-[75vh] w-full overflow-hidden bg-mint md:min-h-[85vh]">
-      {/* Sage fallback — shows behind the photo while it loads */}
-      <div className="absolute inset-0 bg-gradient-to-br from-mint via-mint-deep to-brand-200" />
-      {/* Hero photo — prioritized as the LCP image (eager + high fetch priority),
-          anchored top-right so the model's head isn't cropped. */}
-      <Image
-        src={HERO_IMAGE}
-        alt="New and verified pre-loved homeware from Berlin Houseware"
-        aspectRatio="1672/941"
-        sizes="100vw"
-        loading="eager"
-        fetchPriority="high"
-        className="absolute inset-0 h-full w-full object-cover object-right-top"
-      />
-      {/* Left wash keeps dark text legible over the negative space */}
-      <div className="absolute inset-0 bg-gradient-to-r from-mint/95 via-mint/70 to-mint/30 md:via-mint/40 md:to-transparent" />
+        {/* Product slider — the phone swipes through products with a smooth,
+          always-forward slide (cubic-bezier ease, seamless loop). */}
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          <div
+            className={`flex h-full ${
+              animate
+                ? 'transition-transform duration-[700ms] ease-[cubic-bezier(0.76,0,0.24,1)]'
+                : ''
+            }`}
+            style={{transform: `translateX(-${i * 100}%)`}}
+          >
+            {slides.map(({card: c, key}) => (
+              <div
+                key={key}
+                className="flex h-full w-full shrink-0 flex-col px-3 pb-3 pt-2"
+              >
+                {/* Product image — a 1:1 tile, full content width so its edges
+                  line up with the text column below (balanced) */}
+                <div className="relative aspect-square w-full shrink-0 overflow-hidden rounded-md bg-white">
+                  <img
+                    src={c.img}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-x-0 bottom-1.5 flex justify-center gap-1">
+                    {cards.map((dotCard, d) => (
+                      <span
+                        key={dotCard.title}
+                        className={`h-1 w-1 rounded-full ${d === activeDot ? 'bg-white shadow' : 'bg-white/50'}`}
+                      />
+                    ))}
+                  </div>
+                </div>
 
-      {/* Left-aligned content, sitting in the sage negative space */}
-      <div className="ui-container relative flex min-h-[75vh] items-center md:min-h-[85vh]">
-        <div className="max-w-xl">
-          <span className="eyebrow text-brand-700">
-            New Drops · Verified Pre-Loved
-          </span>
-          <h1 className="mt-3 text-5xl font-extrabold uppercase leading-[0.9] tracking-tight text-ink md:text-7xl">
-            Buy &amp; Sell
-            <br />
-            <RotatingWord />
-          </h1>
-          <p className="mt-5 max-w-md text-base text-ink/70 md:text-lg">
-            The marketplace for new and pre-loved. If it&apos;s good, someone
-            wants it — shop the drop, or consign yours and get paid.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link to={shopTo} className="btn btn-dark">
-              Shop
-            </Link>
-            <Link to="/consign" className="btn btn-outline">
-              Start selling
-            </Link>
+                {/* Title block — directly under the image */}
+                <div className="mt-2 shrink-0">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted">
+                    Shop › {c.category}
+                  </p>
+                  <p className="mt-0.5 truncate text-[18px] font-extrabold leading-tight tracking-tight text-ink">
+                    {c.title}
+                  </p>
+                </div>
+
+                {/* Options — grouped right under the title */}
+                <div className="mt-2 shrink-0 space-y-1.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-10 text-[10px] font-bold uppercase tracking-wide text-ink">
+                      Color
+                    </span>
+                    <span className="h-4 w-4 rounded-full bg-ink ring-1 ring-black/10" />
+                    <span className="h-4 w-4 rounded-full bg-brand-500 ring-1 ring-black/10" />
+                    <span className="h-4 w-4 rounded-full bg-[#c9b8a8] ring-1 ring-black/10" />
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-10 text-[10px] font-bold uppercase tracking-wide text-ink">
+                      Size
+                    </span>
+                    <span className="inline-flex h-6 items-center gap-1.5 rounded-md border border-black/15 px-2.5 text-[11px] font-semibold text-ink">
+                      M
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-2.5 w-2.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-10 text-[10px] font-bold uppercase tracking-wide text-ink">
+                      Qty
+                    </span>
+                    <span className="inline-flex h-6 items-center overflow-hidden rounded-md border border-black/15 text-[11px] font-semibold text-ink">
+                      <span className="grid h-full w-6 place-items-center">
+                        −
+                      </span>
+                      <span className="grid h-full w-7 place-items-center border-x border-black/10 tabular-nums">
+                        1
+                      </span>
+                      <span className="grid h-full w-6 place-items-center">
+                        +
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* CTAs — the brand's two actions: Shop now (primary) over Consign */}
+                <div className="mt-auto shrink-0 space-y-1.5 pt-2">
+                  <div className="flex h-7 w-full items-center justify-center rounded-md bg-ink text-[11px] font-semibold text-paper">
+                    Shop now
+                  </div>
+                  <div className="flex h-7 w-full items-center justify-center rounded-md border border-ink/30 text-[11px] font-semibold text-ink">
+                    Consign
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -297,7 +541,15 @@ function ValueProps() {
       t: 'Free shipping',
       d: 'On orders over $75',
       icon: (
-        <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          className={svg}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M3 6.5h10v9H3z" />
           <path d="M13 9.5h4l3 3v3h-7z" />
           <circle cx="7" cy="17.5" r="1.6" />
@@ -309,7 +561,15 @@ function ValueProps() {
       t: 'Verified quality',
       d: 'Every consignment inspected',
       icon: (
-        <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          className={svg}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M12 3l7 2.5v5.5c0 4-3 6.8-7 8-4-1.2-7-4-7-8V5.5L12 3z" />
           <path d="m9 11.5 2 2 4-4" />
         </svg>
@@ -319,7 +579,15 @@ function ValueProps() {
       t: 'Easy 30-day returns',
       d: 'On unworn items',
       icon: (
-        <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          className={svg}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M4.5 9A8 8 0 1 1 3.2 13.2" />
           <path d="M3 4.5V9h4.5" />
         </svg>
@@ -329,7 +597,15 @@ function ValueProps() {
       t: 'Earn as you sell',
       d: 'Up to 80% payout',
       icon: (
-        <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          className={svg}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M4 13 11 6l8 1 1 8-7 7-9-9z" />
           <circle cx="14.5" cy="9.5" r="1.4" />
         </svg>
@@ -416,7 +692,9 @@ function CategoryTiles({
               <div className="absolute inset-0 bg-gradient-to-br from-mint-deep via-brand-100 to-brand-200" />
               <div
                 className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                style={{backgroundImage: `url(/categories/${cat.slug}.jpg?v=2)`}}
+                style={{
+                  backgroundImage: `url(/categories/${cat.slug}.jpg?v=2)`,
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
               <h3 className="absolute bottom-0 left-0 p-3 text-sm font-extrabold uppercase leading-tight text-white sm:text-base">
@@ -494,9 +772,21 @@ function ProductGridSkeleton() {
 /* -------------------------------------------------------------------------- */
 function ConsignBand() {
   const steps = [
-    {n: '01', t: 'Snap it', d: 'Send a few photos of the homeware you no longer use.'},
-    {n: '02', t: 'We sell it', d: 'We inspect, price, list, and ship it for you.'},
-    {n: '03', t: 'You get paid', d: 'Earn up to 80% — cash out or store credit.'},
+    {
+      n: '01',
+      t: 'Snap it',
+      d: 'Send a few photos of the homeware you no longer use.',
+    },
+    {
+      n: '02',
+      t: 'We sell it',
+      d: 'We inspect, price, list, and ship it for you.',
+    },
+    {
+      n: '03',
+      t: 'You get paid',
+      d: 'Earn up to 80% — cash out or store credit.',
+    },
   ];
   return (
     <Section className="bg-paper">

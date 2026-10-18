@@ -6,7 +6,7 @@ stays visually and structurally consistent with the rest of the site.
 
 Brand: **Berlin Houseware** — a Shopify Hydrogen storefront for **ecommerce +
 consignment** (new goods and verified pre-loved homeware). Aesthetic: Nike /
-Off-White influence — bold, lots of whitespace, pill buttons — recolored to a
+Off-White influence — bold, lots of whitespace, clean reduced-corner buttons — recolored to a
 **light-green** palette.
 
 ---
@@ -28,7 +28,7 @@ screen feels like the same product. Follow modern UI/UX best practices —
 - **Proximity & grouping.** Group related elements tightly; separate unrelated
   sections with generous whitespace. Spacing itself communicates relationships.
 - **Clear visual hierarchy.** Guide attention with size, weight, spacing, and
-  contrast. **One** clear primary action per view (dark pill CTA); secondary
+  contrast. **One** clear primary action per view (dark CTA); secondary
   actions stay quieter (outline/ghost). Rank content with the type scale
   (eyebrow → body → `h2` → `h1`).
 - **Generous white space.** Lean uncluttered and premium — when unsure, add space,
@@ -125,9 +125,17 @@ white on.** There is no valid combination of green background + dark text.
 
 ### Radius
 
-Pills `rounded-full` (buttons, chips, swatches). Cards/tiles `rounded-2xl`
-(products) / `rounded-3xl` (large tiles, gallery, hero image). Small thumbs
-`rounded-xl`.
+**Minimal corners site-wide.** Cards, tiles, inputs, and panels use tight
+corners driven by the `@theme` radius tokens: `rounded-2xl` = **6px** (cards,
+inputs — the standard surface radius, matching the seller card), `rounded-3xl` =
+**8px** (large tiles, gallery, hero), `rounded-xl` = **4px** (small thumbs).
+Change the look in one place by editing those tokens in `app/styles/tailwind.css`.
+
+**Buttons also use the reduced corner.** `.btn`'s radius was changed from a full
+pill to `--radius-2xl` (6px), so every `.btn` across the site matches the minimal
+surface language. **Chips and swatches stay full pills** (`rounded-full` via
+`--radius-pill`) — those small round elements are the one deliberate exception.
+The header search field now uses the reduced corner (`rounded-2xl`) too.
 
 ---
 
@@ -154,13 +162,24 @@ Pills `rounded-full` (buttons, chips, swatches). Cards/tiles `rounded-2xl`
 
 ### Buttons (`@layer components` in `tailwind.css`)
 
-All buttons are **pills** (`.btn` = inline-flex, `rounded-full`, weight 600,
-subtle active scale). Variants:
+All buttons use the **reduced 6px corner** (`.btn` = inline-flex,
+`border-radius: --radius-2xl`, weight 600, subtle active scale) — matching the
+minimal surface radius, not a pill. Variants:
 
 - `.btn-dark` — ink bg, white text; **hovers to brand green**. Primary CTA.
 - `.btn-brand` — brand-500 bg, dark-green text. Bright CTA.
 - `.btn-outline` — 1.5px ink border, fills ink on hover. Secondary.
 - `.btn-ghost` — translucent white, for use over imagery.
+
+### Dropdowns / selects (`app/components/SelectMenu.tsx`)
+
+**Never use a native `<select>`** — its popup is an unstyleable browser-native
+modal that breaks the design language. Use **`<SelectMenu>`** for every
+single-select: a reduced-corner trigger + a floating `role="listbox"` panel
+(white, hairline border, soft shadow, mint hover/active, brand-green check on the
+selected row), closing on outside-click and Escape. Controlled via
+`value` + `onChange` with `{value, label}` options. The collection/search
+`SortMenu` and the seller-store sort both render through it.
 
 ### Cards & tiles
 
@@ -202,8 +221,8 @@ keep it that way; only quantity is local state.
 
 ### Forms
 
-Inputs: `rounded-2xl` (or `rounded-full` for search), `border-black/15`, focus
-`border-brand-500`. Labels `text-sm font-semibold`. Validation errors
+Inputs: `rounded-2xl` (the header search field included), `border-black/15`,
+focus `border-brand-500`. Labels `text-sm font-semibold`. Validation errors
 `text-red-600`. See `app/routes/consign.tsx` for the reference form + server
 `action` pattern.
 
@@ -233,7 +252,8 @@ illustrations for this brand.
 - Reuse `.ui-container`, the Section pattern, `.btn-*`, `.eyebrow`, and existing
   components before writing new markup.
 - Keep the alternating paper/mint bands and `py-16 md:py-24` rhythm.
-- Uppercase, extrabold, tracking-tight headings; green accents; pill buttons.
+- Uppercase, extrabold, tracking-tight headings; green accents; reduced-corner
+  (6px) buttons; `<SelectMenu>` for dropdowns (never native `<select>`).
 - Preserve standard Hydrogen data flow and URL-driven variant state.
 
 **Don't**
@@ -244,7 +264,9 @@ illustrations for this brand.
   placeholder icon). Icons are for functional UI only.
 - Add `!important` (the layer setup makes it unnecessary).
 - Put `ui-container` on a `<section>` element itself.
-- Introduce new fonts, non-green accent colors, or square/hard-cornered buttons.
+- Introduce new fonts, non-green accent colors, or sharp zero-radius buttons
+  (buttons use the reduced 6px corner, not a hard square).
+- Use a native `<select>` — use `<SelectMenu>` instead.
 - Add global element CSS rules outside a `@layer`.
 - Build custom checkout or move variant selection into React state.
 

@@ -19,6 +19,15 @@ export default async function handleRequest(
       checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
       storeDomain: context.env.PUBLIC_STORE_DOMAIN,
     },
+    // Allow the hero phone's broad category photos (hot-linked stock imagery)
+    // in addition to the Shopify CDN. Merged with Hydrogen's img-src defaults.
+    imgSrc: [
+      "'self'",
+      'https://cdn.shopify.com',
+      'https://shopify.com',
+      'https://images.unsplash.com',
+      'data:',
+    ],
   });
 
   const body = await renderToReadableStream(

@@ -4,6 +4,7 @@ import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
 import {CartLineItem, type CartLine} from '~/components/CartLineItem';
 import {CartSummary} from './CartSummary';
+import {usePublishCartLines} from '~/components/CartLinesContext';
 
 export type CartLayout = 'page' | 'aside';
 
@@ -40,6 +41,10 @@ function getLineItemChildrenMap(lines: CartLine[]): LineItemChildrenMap {
 export function CartMain({layout, cart: originalCart}: CartMainProps) {
   // useOptimisticCart applies pending actions so the user sees feedback instantly.
   const cart = useOptimisticCart(originalCart);
+
+  // Mirror this (React-Router-synced, optimistic) cart to product cards so their
+  // add-to-cart ⇄ quantity state never lags — no snapshot flash on remove.
+  usePublishCartLines(cart);
 
   const lines = cart?.lines?.nodes ?? [];
   const cartHasItems = (cart?.totalQuantity ?? 0) > 0;

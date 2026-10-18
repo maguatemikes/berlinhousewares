@@ -261,6 +261,20 @@ const SHOP_QUERY = `#graphql
         currencyCode
       }
     }
+    selectedOrFirstAvailableVariant {
+      id
+      availableForSale
+    }
+    seller: metafield(namespace: "custom", key: "seller") {
+      reference {
+        ... on Metaobject {
+          handle
+          slug: field(key: "slug") {
+            value
+          }
+        }
+      }
+    }
   }
   query Shop(
     $country: CountryCode

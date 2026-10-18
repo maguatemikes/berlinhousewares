@@ -311,8 +311,6 @@ export default function Product() {
               )}
             </div>
 
-            <Installments price={selectedVariant?.price} />
-
             <div className="mt-8">
               <ProductForm
                 productOptions={productOptions}
@@ -443,21 +441,6 @@ function Stars({count = 5}: {count?: number}) {
         </svg>
       ))}
     </span>
-  );
-}
-
-function Installments({price}: {price?: MoneyV2}) {
-  if (!price) return null;
-  const per: MoneyV2 = {
-    amount: (Number(price.amount) / 4).toFixed(2),
-    currencyCode: price.currencyCode,
-  };
-  return (
-    <p className="mt-2 text-sm text-muted">
-      Pay in 4 interest-free installments of{' '}
-      <Money as="span" data={per} className="font-semibold text-ink" /> with{' '}
-      <span className="font-semibold text-brand-700">Shop Pay</span>.
-    </p>
   );
 }
 

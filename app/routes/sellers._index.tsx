@@ -39,7 +39,7 @@ export default function SellersIndex() {
 
       <div className="ui-container py-16 md:py-24">
         {sellers.length === 0 ? (
-          <div className="rounded-3xl bg-mint px-6 py-16 text-center">
+          <div className="rounded-md bg-mint px-6 py-16 text-center">
             <p className="text-lg font-bold text-ink">No sellers yet</p>
             <p className="mt-1 text-sm text-muted">
               Sellers appear here once their products are listed.
@@ -52,7 +52,7 @@ export default function SellersIndex() {
                 key={s.handle}
                 to={`/sellers/${s.handle}`}
                 prefetch="intent"
-                className="group relative block aspect-[4/5] overflow-hidden rounded-3xl bg-ink"
+                className="group relative block aspect-[4/5] overflow-hidden rounded-md bg-ink"
               >
                 {/* Product showcase: auto-rotating slideshow of the seller's
                     pieces (crossfade + slide dots), branded tile fallback */}
@@ -78,46 +78,50 @@ export default function SellersIndex() {
                     aria-hidden="true"
                   />
                   <div className="relative p-5 pt-8">
-                  <div className="flex items-center justify-between gap-3">
+                    {/* Identity — the one dominant element */}
                     <h3 className="truncate text-lg font-extrabold uppercase tracking-tight text-white">
                       {s.name}
                     </h3>
-                    <span className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                      {s.productCount} {s.productCount === 1 ? 'item' : 'items'}
-                    </span>
-                  </div>
 
-                  <p className="mt-1.5 line-clamp-2 text-sm text-white/75">
-                    {s.bio ||
-                      'Verified pre-loved pieces, inspected and authenticated by Berlin Houseware.'}
-                  </p>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {s.verified && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-3 w-3"
-                          aria-hidden="true"
-                        >
-                          <path
-                            d="m5 13 4 4L19 7"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                        Verified
+                    {/* Meta — trust, category, and count grouped on one line,
+                        ranked by weight: Verified (strongest) → Consignor
+                        (quiet) → item count (plain metadata, pushed right) */}
+                    <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                      {s.verified && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="h-3 w-3 text-brand-400"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="m5 13 4 4L19 7"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          Verified
+                        </span>
+                      )}
+                      <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/80 backdrop-blur-sm">
+                        Consignor
                       </span>
-                    )}
-                    <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
-                      Consignor
-                    </span>
-                  </div>
+                      <span className="ml-auto text-[11px] font-medium tabular-nums text-white/60">
+                        {s.productCount} {s.productCount === 1 ? 'item' : 'items'}
+                      </span>
+                    </div>
 
-                    <span className="mt-4 flex h-11 w-full items-center justify-center rounded-full bg-white text-sm font-semibold text-ink transition-colors group-hover:bg-brand-700 group-hover:text-white">
+                    {/* Description — supporting copy */}
+                    <p className="mt-3 line-clamp-2 text-[13px] leading-relaxed text-white/70">
+                      {s.bio ||
+                        'Verified pre-loved pieces, inspected and authenticated by Berlin Houseware.'}
+                    </p>
+
+                    {/* Action — full-width rounded-rectangle button */}
+                    <span className="mt-5 flex h-11 w-full items-center justify-center rounded-md bg-white text-sm font-semibold text-ink transition-colors group-hover:bg-brand-700 group-hover:text-white">
                       Visit store
                     </span>
                   </div>

@@ -127,13 +127,13 @@ export function ProductForm({
       {/* Quantity */}
       <div className="mb-6">
         <h3 className="mb-2 text-sm font-semibold text-ink">Quantity</h3>
-        <div className="inline-flex h-11 items-center rounded-full border border-black/15">
+        <div className="inline-flex h-11 items-center overflow-hidden rounded-2xl border border-black/15">
           <button
             type="button"
             aria-label="Decrease quantity"
             onClick={() => setQuantity((q) => Math.max(1, q - 1))}
             disabled={quantity <= 1}
-            className="grid h-full w-11 place-items-center rounded-full text-ink hover:bg-mint disabled:opacity-30"
+            className="grid h-full w-11 place-items-center text-ink hover:bg-mint disabled:opacity-30"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4">
               <path
@@ -151,7 +151,7 @@ export function ProductForm({
             type="button"
             aria-label="Increase quantity"
             onClick={() => setQuantity((q) => Math.min(99, q + 1))}
-            className="grid h-full w-11 place-items-center rounded-full text-ink hover:bg-mint"
+            className="grid h-full w-11 place-items-center text-ink hover:bg-mint"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4">
               <path
@@ -168,7 +168,7 @@ export function ProductForm({
       {/* Actions */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <AddToCartButton
-          className="btn btn-outline w-full min-h-11 disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn bg-coral text-white hover:bg-coral-dark w-full min-h-11 rounded-2xl disabled:cursor-not-allowed disabled:opacity-40"
           disabled={!available}
           onClick={() => open('cart')}
           lines={lines}
@@ -176,7 +176,7 @@ export function ProductForm({
           {available ? 'Add to cart' : 'Sold out'}
         </AddToCartButton>
         <AddToCartButton
-          className="btn btn-dark w-full min-h-11 disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn btn-dark w-full min-h-11 rounded-2xl disabled:cursor-not-allowed disabled:opacity-40"
           disabled={!available}
           redirectTo="checkout"
           lines={lines}
