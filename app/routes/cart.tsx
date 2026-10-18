@@ -5,7 +5,10 @@ import {CartForm} from '@shopify/hydrogen';
 import {CartMain} from '~/components/CartMain';
 
 export const meta: Route.MetaFunction = () => {
-  return [{title: `Hydrogen | Cart`}];
+  return [
+    {title: 'Cart — Berlin Houseware'},
+    {name: 'robots', content: 'noindex,nofollow'},
+  ];
 };
 
 export const headers: HeadersFunction = ({actionHeaders}) => actionHeaders;
@@ -67,6 +70,35 @@ export async function action({request, context}: Route.ActionArgs) {
       result = await cart.updateBuyerIdentity({
         ...inputs.buyerIdentity,
       });
+      break;
+    }
+    case CartForm.ACTIONS.SelectedDeliveryOptionsUpdate: {
+      // Path B: bind the shopper's chosen fulfillment method (ship / pickup /
+      // local) to the cart's delivery group so it carries into checkout.
+      result = await cart.updateSelectedDeliveryOption(
+        inputs.selectedDeliveryOptions,
+      );
+      break;
+    }
+    case CartForm.ACTIONS.DeliveryAddressesAdd: {
+      // Path B: set the destination (ZIP) so Shopify returns real delivery
+      // options (shipping / local delivery) and pickup availability.
+      result = await cart.addDeliveryAddresses(inputs.addresses);
+      break;
+    }
+    case 'CustomSetDeliveryMethod': {
+      // Set the checkout delivery *preference* (pre-fills the Ship/Pickup tab at
+      // Shopify's hosted checkout) AND mirror it to a cart attribute so the cart
+      // UI can show the active choice — preferences aren't readable back.
+      const method = String(inputs.method ?? '');
+      if (method === 'PICK_UP' || method === 'SHIPPING') {
+        await cart.updateBuyerIdentity({
+          preferences: {delivery: {deliveryMethod: [method]}},
+        });
+      }
+      result = await cart.updateAttributes([
+        {key: 'delivery_method', value: method},
+      ]);
       break;
     }
     default:

@@ -25,6 +25,7 @@ import {
   ACCOUNT_LABEL,
   ACCOUNT_INPUT,
 } from '~/components/AccountUI';
+import {clearAccountCache} from '~/lib/accountCache';
 
 export type ActionResponse = {
   addressId?: string | null;
@@ -262,6 +263,15 @@ export async function action({request, context}: Route.ActionArgs) {
       },
     );
   }
+}
+
+// The addresses list is rendered from the parent layout's `customer` (outlet
+// context), so after a create/update/delete the cached customer MUST be dropped
+// or the new/edited/removed address wouldn't appear until the TTL expired.
+export async function clientAction({serverAction}: Route.ClientActionArgs) {
+  const result = await serverAction();
+  clearAccountCache();
+  return result;
 }
 
 type Mode = 'list' | 'new' | {edit: string};

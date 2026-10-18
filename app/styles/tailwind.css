@@ -53,7 +53,10 @@
   html {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    scroll-behavior: smooth;
+    /* NOTE: no global `scroll-behavior: smooth` — it makes React Router's
+       <ScrollRestoration> animate the scroll-to-top on navigation, which never
+       lands, leaving new pages (e.g. a PDP) stuck mid-page. Smooth scrolling is
+       opted into explicitly where wanted via scrollIntoView({behavior:'smooth'}). */
   }
 
   body {

@@ -245,6 +245,18 @@ export default function Product() {
     return out;
   })();
 
+  // Path A fulfillment — real pickup availability for the selected variant, from
+  // Shopify Local Pickup (`storeAvailability`). Stays empty (→ "Not available")
+  // until Local Pickup is enabled in Admin and the item is stocked at a pickup
+  // location; then it lights up automatically. Shipping/Delivery are informational.
+  const pickupNode =
+    selectedVariant?.storeAvailability?.nodes?.find((n) => n?.available) ?? null;
+  const pickup = {
+    available: Boolean(pickupNode),
+    locationName: pickupNode?.location?.name ?? null,
+    pickUpTime: pickupNode?.pickUpTime ?? null,
+  };
+
   return (
     <>
       <div className="ui-container py-8 md:py-12">
@@ -310,6 +322,7 @@ export default function Product() {
               />
             </div>
 
+            <FulfillmentOptions pickup={pickup} />
             <TrustLine />
 
             <div className="mt-8 border-t border-black/10">
@@ -448,6 +461,123 @@ function Installments({price}: {price?: MoneyV2}) {
   );
 }
 
+/**
+ * Fulfillment options — STATIC UI ONLY (no logic yet). Mirrors the Target/Walmart
+ * PDP pattern (Pickup / Delivery / Shipping) for design review. States are
+ * hardcoded placeholders; wiring to real storeAvailability/inventory comes later.
+ */
+function FulfillmentOptions({
+  pickup,
+}: {
+  pickup: {
+    available: boolean;
+    locationName?: string | null;
+    pickUpTime?: string | null;
+  };
+}) {
+  const sp = {
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.7,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    className: 'h-5 w-5',
+    'aria-hidden': true,
+  };
+  const options = [
+    {
+      key: 'pickup',
+      label: 'Pickup',
+      sub: pickup.available
+        ? pickup.locationName || 'Available in store'
+        : 'Not available',
+      selectable: pickup.available,
+      accent: pickup.available,
+      icon: (
+        <svg {...sp}>
+          <path d="M4 9h16M5 9l1-4h12l1 4M5 9v11h14V9M9 20v-6h6v6" />
+        </svg>
+      ),
+    },
+    {
+      key: 'delivery',
+      label: 'Delivery',
+      sub: 'Check availability',
+      selectable: true,
+      accent: false,
+      icon: (
+        <svg {...sp}>
+          <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+      ),
+    },
+    {
+      key: 'shipping',
+      label: 'Shipping',
+      sub: 'Free over $75',
+      selectable: true,
+      accent: true,
+      icon: (
+        <svg {...sp}>
+          <path d="M1 4h15v12H1zM16 8h4l3 3v5h-7" />
+          <circle cx="5.5" cy="18.5" r="1.6" />
+          <circle cx="18.5" cy="18.5" r="1.6" />
+        </svg>
+      ),
+    },
+  ];
+  const [method, setMethod] = useState<string>(
+    pickup.available ? 'pickup' : 'shipping',
+  );
+
+  return (
+    <div className="mt-8">
+      <p className="mb-3 text-sm font-semibold text-ink">How you&apos;ll get it</p>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        {options.map((o) => {
+          const isSelected = method === o.key;
+          return (
+            <button
+              key={o.key}
+              type="button"
+              onClick={() => o.selectable && setMethod(o.key)}
+              disabled={!o.selectable}
+              aria-pressed={isSelected}
+              className={`rounded-2xl border-2 p-3 text-left transition-colors ${
+                isSelected
+                  ? 'border-brand-600 bg-mint'
+                  : 'border-black/10 bg-white hover:border-black/25'
+              } ${o.selectable ? '' : 'cursor-not-allowed opacity-60'}`}
+            >
+              <span className={o.accent ? 'text-brand-700' : 'text-muted'}>
+                {o.icon}
+              </span>
+              <div className="mt-2 text-sm font-bold text-ink">{o.label}</div>
+              <div
+                className={`mt-0.5 text-xs ${
+                  o.accent ? 'text-brand-700' : 'text-muted'
+                }`}
+              >
+                {o.sub}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {method === 'pickup' && pickup.available && pickup.pickUpTime ? (
+        <p className="mt-3 text-xs text-muted">
+          Ready {pickup.pickUpTime.toLowerCase()} at{' '}
+          <span className="font-semibold text-ink">
+            {pickup.locationName || 'our store'}
+          </span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function TrustLine() {
   return (
     <p className="mt-6 flex items-center gap-2 text-xs text-muted">
@@ -543,6 +673,15 @@ const PRODUCT_VARIANT_FRAGMENT = `#graphql
     unitPrice {
       amount
       currencyCode
+    }
+    storeAvailability(first: 5) {
+      nodes {
+        available
+        pickUpTime
+        location {
+          name
+        }
+      }
     }
   }
 ` as const;

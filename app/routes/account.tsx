@@ -8,7 +8,9 @@ import {
   type ShouldRevalidateFunction,
 } from 'react-router';
 import type {Route} from './+types/account';
+import type {CustomerFragment} from 'customer-accountapi.generated';
 import {CUSTOMER_DETAILS_QUERY} from '~/graphql/customer-account/CustomerDetailsQuery';
+import {getCached, setCached} from '~/lib/accountCache';
 import {
   IconBag,
   IconUser,
@@ -45,6 +47,23 @@ export async function loader({context}: Route.LoaderArgs) {
     },
   );
 }
+
+type AccountLoaderData = {customer: CustomerFragment};
+
+// Client-side read-through cache over the slow, uncacheable customer query.
+// A cache hit paints the account section instantly instead of waiting on a
+// Customer Account API round-trip; a miss falls through to the server loader
+// and seeds the cache. `hydrate = true` makes this run on first load too, where
+// `serverLoader()` returns the SSR data (no extra request) and seeds the cache.
+// The cache is invalidated on logout and after any profile/address mutation
+// (see clientAction in those routes), so edits never show stale data.
+export async function clientLoader({serverLoader}: Route.ClientLoaderArgs) {
+  const cached = getCached<AccountLoaderData>('customer');
+  if (cached) return cached;
+  const fresh = (await serverLoader()) as AccountLoaderData;
+  return setCached('customer', fresh);
+}
+clientLoader.hydrate = true as const;
 
 const NAV_BASE =
   'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors [&>svg]:shrink-0';
