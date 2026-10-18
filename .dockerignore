@@ -1,0 +1,13 @@
+.git
+node_modules
+dist
+build
+.react-router
+.env
+.env.*
+archive
+docs
+guides
+screenshots
+*.log
+.DS_Store

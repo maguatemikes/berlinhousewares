@@ -5,10 +5,9 @@
   "version": "2026.4.3",
   "type": "module",
   "scripts": {
-    "build": "shopify hydrogen build --codegen",
+    "build": "react-router build",
+    "start": "node --import tsx server/index.ts",
     "dev": "shopify hydrogen dev --codegen",
-    "preview": "shopify hydrogen preview --build",
-    "deploy": "npm run build && wrangler deploy",
     "lint": "eslint --no-error-on-unmatched-pattern .",
     "typecheck": "react-router typegen && tsc --noEmit",
     "codegen": "shopify hydrogen codegen && react-router typegen"
@@ -16,7 +15,11 @@
   "prettier": "@shopify/prettier-config",
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
+    "@react-router/express": "7.16.0",
+    "@react-router/node": "7.16.0",
     "@shopify/hydrogen": "2026.4.3",
+    "compression": "^1.7.5",
+    "express": "^4.21.2",
     "graphql": "^16.10.0",
     "graphql-tag": "^2.12.6",
     "isbot": "^5.1.22",
@@ -24,7 +27,8 @@
     "react-dom": "^18.3.1",
     "react-router": "7.16.0",
     "react-router-dom": "7.16.0",
-    "tailwindcss": "^4.1.6"
+    "tailwindcss": "^4.1.6",
+    "tsx": "^4.19.2"
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.5",
@@ -35,12 +39,13 @@
     "@react-router/fs-routes": "7.16.0",
     "@shopify/cli": "3.93.2",
     "@shopify/hydrogen-codegen": "0.3.3",
-    "@shopify/mini-oxygen": "4.1.0",
-    "@shopify/oxygen-workers-types": "^4.1.6",
     "@shopify/prettier-config": "^1.1.2",
     "@tailwindcss/vite": "^4.1.6",
     "@total-typescript/ts-reset": "^0.6.1",
+    "@types/compression": "^1.7.5",
     "@types/eslint": "^9.6.1",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.0",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
     "@typescript-eslint/eslint-plugin": "^8.21.0",

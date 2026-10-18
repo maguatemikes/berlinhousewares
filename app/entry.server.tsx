@@ -1,6 +1,8 @@
 import {ServerRouter} from 'react-router';
 import {isbot} from 'isbot';
-import {renderToReadableStream} from 'react-dom/server';
+// Node has no 'react-dom/server' edge export; the browser build provides
+// renderToReadableStream (web streams) and runs under Node 18+ and on edge.
+import {renderToReadableStream} from 'react-dom/server.browser';
 import {
   createContentSecurityPolicy,
   type HydrogenRouterContextProvider,
