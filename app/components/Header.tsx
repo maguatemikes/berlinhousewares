@@ -1,10 +1,12 @@
-import {Suspense, useEffect, useState} from 'react';
+import {Suspense, useEffect, useRef, useState} from 'react';
 import {
   Await,
   Form,
   NavLink,
   Link,
   useAsyncValue,
+  useFetcher,
+  useNavigate,
   useNavigation,
 } from 'react-router';
 import {
@@ -14,11 +16,19 @@ import {
 } from '@shopify/hydrogen';
 import type {HeaderQuery, CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
+import {SEARCH_ENDPOINT} from '~/components/SearchFormPredictive';
+import {PredictiveResults} from '~/components/PredictiveResults';
+import {MicButton, useVoiceSearch} from '~/components/VoiceSearch';
+import {
+  getEmptyPredictiveSearchResult,
+  type PredictiveSearchReturn,
+} from '~/lib/search';
 
 type HeaderCustomer = {firstName?: string | null; lastName?: string | null};
 
 interface HeaderProps {
   header: HeaderQuery;
+  departments: NavDepartment[];
   cart: Promise<CartApiQueryFragment | null>;
   isLoggedIn: Promise<boolean>;
   customer: Promise<HeaderCustomer | null>;
@@ -34,24 +44,24 @@ type NavItem = {
   title: string;
   to: string;
   accent?: boolean;
-  children?: {label: string; to: string}[];
+  departments?: NavDepartment[];
 };
 
-// Collections-driven nav: a single "Shop" whose dropdown auto-lists every
-// Shopify collection (alphabetical), plus Consign. Create a collection in
-// Shopify and it appears in the Shop dropdown automatically — no code edits.
-function buildNav(
-  collections: ReadonlyArray<{title: string; handle: string}>,
-): NavItem[] {
-  const categories = collections.map((c) => ({
-    label: c.title,
-    to: `/collections/${c.handle}`,
-  }));
+/** A real-time leaf category (links to the Shop page with that filter applied). */
+export type NavCategory = {label: string; to: string};
+/** An eBay-style department (top-level taxonomy vertical) + its live leaves,
+ *  built in the root loader from the Storefront category facet. */
+export type NavDepartment = {label: string; to: string; items: NavCategory[]};
+
+// Real-time, product-driven nav: "Shop" auto-lists live categories grouped into
+// departments (from the Storefront category facet — no manual collections to
+// curate). New products in new categories self-populate the menu.
+function buildNav(departments: ReadonlyArray<NavDepartment>): NavItem[] {
   return [
     {
       title: 'Shop',
       to: '/collections/all',
-      children: categories.length ? categories : undefined,
+      departments: departments.length ? [...departments] : undefined,
     },
     {title: 'Sellers', to: '/sellers'},
     {title: 'Consign', to: '/consign'},
@@ -61,9 +71,9 @@ function buildNav(
 /* -------------------------------------------------------------------------- */
 /* Header                                                                      */
 /* -------------------------------------------------------------------------- */
-export function Header({header, customer, cart}: HeaderProps) {
+export function Header({header, departments, customer, cart}: HeaderProps) {
   const {shop} = header;
-  const nav = buildNav(header.collections?.nodes ?? []);
+  const nav = buildNav(departments ?? []);
   return (
     <div className="sticky top-0 z-50">
       <UtilityBar customer={customer} />
@@ -103,6 +113,8 @@ export function Header({header, customer, cart}: HeaderProps) {
           </div>
         </div>
       </header>
+
+      <CategoryBar departments={departments ?? []} />
 
       <AnnouncementBar />
     </div>
@@ -236,6 +248,87 @@ function UtilSignedIn({name}: {name: string | null}) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Category bar (eBay-style second row of top-level departments)                */
+/* -------------------------------------------------------------------------- */
+function CategoryBar({departments}: {departments: NavDepartment[]}) {
+  if (!departments.length) return null;
+  return (
+    <div className="relative z-10 border-b border-black/10 bg-paper">
+      <div className="ui-container flex items-center gap-1 overflow-x-auto py-2 no-scrollbar lg:overflow-visible">
+        <Link
+          to="/collections/all"
+          prefetch="intent"
+          className="shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold text-ink transition-colors hover:bg-mint"
+        >
+          All
+        </Link>
+        {departments.map((d) => {
+          // Dynamic layout: at most 5 per column; the row count follows the
+          // actual items so the panel's height AND width hug the content. Capped
+          // so the widest department (4 columns) still fits the panel's max-width.
+          const shown = d.items.slice(0, 20);
+          const rows = Math.max(1, Math.min(5, shown.length));
+          return (
+          <div
+            key={d.label}
+            className="group/cat static shrink-0 lg:relative"
+          >
+            <Link
+              to={d.to}
+              prefetch="intent"
+              className="flex items-center gap-1 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-mint hover:text-ink group-hover/cat:bg-mint group-hover/cat:text-ink"
+            >
+              {d.label}
+              {d.items.length > 0 && (
+                <svg
+                  viewBox="0 0 24 24"
+                  className="hidden h-3.5 w-3.5 lg:block"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              )}
+            </Link>
+
+            {/* Hover dropdown of the department's live sub-categories (desktop).
+                Capped at 15 (3 columns of 5) so it stays compact; "View all"
+                carries the rest. */}
+            {d.items.length > 0 && (
+              <div className="invisible absolute left-0 top-full z-20 hidden pt-2 opacity-0 transition-[opacity,visibility] duration-150 group-hover/cat:visible group-hover/cat:opacity-100 lg:block">
+                <div className="w-max max-w-[min(92vw,56rem)] rounded-2xl border border-black/10 bg-paper p-5 shadow-xl">
+                  <ul
+                    className="grid grid-flow-col gap-x-12 gap-y-2.5"
+                    style={{gridTemplateRows: `repeat(${rows}, auto)`}}
+                  >
+                    {shown.map((c) => (
+                      <li key={c.label}>
+                        <Link
+                          to={c.to}
+                          prefetch="intent"
+                          className="block whitespace-nowrap text-sm font-normal text-ink transition-colors hover:text-brand-700"
+                        >
+                          {c.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* Top nav item + mega menu                                                    */
 /* -------------------------------------------------------------------------- */
 function NavTop({item}: {item: NavItem}) {
@@ -256,53 +349,58 @@ function NavTop({item}: {item: NavItem}) {
         {item.title}
       </NavLink>
 
-      {item.children && item.children.length > 0 && (
+      {item.departments && item.departments.length > 0 && (
         <div className="invisible absolute inset-x-0 top-full opacity-0 transition-[opacity,visibility] duration-150 group-hover:visible group-hover:opacity-100">
           <div className="border-t border-black/10 bg-paper shadow-xl">
-            <div className="ui-container grid grid-cols-4 gap-8 py-10">
-              {/* Category links */}
-              <div className="col-span-3">
-                <p className="eyebrow mb-5 text-brand-700">Shop by category</p>
-                <ul className="grid grid-cols-3 gap-x-8 gap-y-3">
-                  <li>
-                    <Link
-                      to={item.to}
-                      prefetch="intent"
-                      className="text-[15px] font-semibold text-ink transition-colors hover:text-brand-700"
-                    >
-                      All products
-                    </Link>
-                  </li>
-                  {item.children.map((l) => (
-                    <li key={l.label}>
-                      <Link
-                        to={l.to}
-                        prefetch="intent"
-                        className="text-[15px] font-medium text-muted transition-colors hover:text-ink"
-                      >
-                        {l.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+            <div className="ui-container py-10">
+              <div className="mb-6 flex items-baseline justify-between">
+                <p className="eyebrow text-brand-700">Shop by category</p>
+                <Link
+                  to={item.to}
+                  prefetch="intent"
+                  className="text-sm font-semibold text-ink transition-colors hover:text-brand-700"
+                >
+                  View everything →
+                </Link>
               </div>
-              {/* Featured tile */}
-              <Link
-                to="/consign"
-                prefetch="intent"
-                className="col-span-1 flex flex-col justify-end overflow-hidden rounded-2xl bg-mint p-6 transition-colors hover:bg-mint-deep"
-              >
-                <span className="eyebrow text-brand-700">Consignment</span>
-                <span className="mt-1 text-xl font-extrabold uppercase leading-tight text-ink">
-                  Sell your pieces
-                </span>
-                <span className="mt-1 text-sm text-muted">
-                  Turn your closet into cash — verified pre-loved.
-                </span>
-                <span className="btn btn-dark mt-4 self-start !px-4 !py-2 text-sm">
-                  Start consigning
-                </span>
-              </Link>
+              {/* eBay-style departments → live sub-categories */}
+              <div className="grid grid-cols-2 gap-x-8 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+                {item.departments.map((dept) => (
+                  <div key={dept.label}>
+                    <Link
+                      to={dept.to}
+                      prefetch="intent"
+                      className="block text-[15px] font-bold text-ink transition-colors hover:text-brand-700"
+                    >
+                      {dept.label}
+                    </Link>
+                    <ul className="mt-3 space-y-2">
+                      {dept.items.slice(0, 6).map((c) => (
+                        <li key={c.label}>
+                          <Link
+                            to={c.to}
+                            prefetch="intent"
+                            className="text-sm text-muted transition-colors hover:text-ink"
+                          >
+                            {c.label}
+                          </Link>
+                        </li>
+                      ))}
+                      {dept.items.length > 6 && (
+                        <li>
+                          <Link
+                            to={dept.to}
+                            prefetch="intent"
+                            className="text-sm font-semibold text-brand-700 hover:underline"
+                          >
+                            See all {dept.items.length}
+                          </Link>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -316,17 +414,17 @@ function NavTop({item}: {item: NavItem}) {
 /* -------------------------------------------------------------------------- */
 export function HeaderMenu({
   viewport,
-  collections,
+  departments,
 }: {
   menu?: HeaderProps['header']['menu'];
   primaryDomainUrl?: string;
   viewport: Viewport;
   publicStoreDomain?: string;
-  collections?: ReadonlyArray<{title: string; handle: string}>;
+  departments?: ReadonlyArray<NavDepartment>;
 }) {
   const {close} = useAside();
   if (viewport !== 'mobile') return null;
-  const nav = buildNav(collections ?? []);
+  const nav = buildNav(departments ?? []);
 
   return (
     <nav className="flex flex-col gap-1 p-2" role="navigation">
@@ -351,18 +449,41 @@ export function HeaderMenu({
           >
             {item.title}
           </NavLink>
-          {item.children && item.children.length > 0 && (
+          {item.departments && item.departments.length > 0 && (
             <div className="ml-3 flex flex-col border-l border-black/10 pl-2">
-              {item.children.map((l) => (
-                <NavLink
-                  key={l.label}
-                  to={l.to}
-                  onClick={close}
-                  prefetch="intent"
-                  className="block rounded-lg px-3 py-2 text-base font-medium text-muted hover:bg-mint hover:text-ink"
-                >
-                  {l.label}
-                </NavLink>
+              {item.departments.map((dept) => (
+                <details key={dept.label} className="group/d">
+                  <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-2 text-base font-semibold text-ink hover:bg-mint">
+                    {dept.label}
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4 shrink-0 text-muted transition-transform group-open/d:rotate-180"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="m6 9 6 6 6-6"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </summary>
+                  <div className="ml-2 flex flex-col border-l border-black/10 pl-2">
+                    {dept.items.map((c) => (
+                      <NavLink
+                        key={c.label}
+                        to={c.to}
+                        onClick={close}
+                        prefetch="intent"
+                        className="block rounded-lg px-3 py-2 text-sm font-medium text-muted hover:bg-mint hover:text-ink"
+                      >
+                        {c.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                </details>
               ))}
             </div>
           )}
@@ -378,23 +499,151 @@ const mobileLinkClass =
 /* -------------------------------------------------------------------------- */
 /* Right-side controls                                                         */
 /* -------------------------------------------------------------------------- */
+/**
+ * Desktop header search — native Hydrogen predictive search (Storefront
+ * `predictiveSearch`) with a branded flyout: suggested queries + live products
+ * and collections with thumbnails. `autoComplete="off"` suppresses the browser's
+ * own search-history dropdown so only our results show. Enter and the submit
+ * button both go to the full `/search` results page.
+ */
 function SearchPill() {
+  const fetcher = useFetcher<PredictiveSearchReturn>({key: 'predictive-header'});
+  const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [term, setTerm] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const items =
+    fetcher.data?.result?.items ?? getEmptyPredictiveSearchResult().items;
+  const total = fetcher.data?.result?.total ?? 0;
+  const loading = fetcher.state !== 'idle';
+  const hasTerm = term.trim().length > 0;
+
+  const voice = useVoiceSearch({
+    onResult: (text) => {
+      setTerm(text);
+      setOpen(true);
+      runPredictive(text);
+      inputRef.current?.focus();
+    },
+    onInterim: (text) => {
+      setTerm(text);
+      setOpen(true);
+    },
+  });
+
+  function runPredictive(value: string) {
+    void fetcher.submit(
+      {q: value, limit: 6, predictive: true},
+      {method: 'GET', action: SEARCH_ENDPOINT},
+    );
+  }
+
+  function onChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const value = event.target.value;
+    setTerm(value);
+    if (value.trim()) {
+      setOpen(true);
+      runPredictive(value);
+    } else {
+      setOpen(false);
+    }
+  }
+
+  function goToSearch(value?: string) {
+    const q = (value ?? inputRef.current?.value ?? '').trim();
+    if (!q) return;
+    setOpen(false);
+    inputRef.current?.blur();
+    void navigate(`${SEARCH_ENDPOINT}?q=${encodeURIComponent(q)}`);
+  }
+
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    goToSearch();
+  }
+
+  // Close on outside click and Escape.
+  useEffect(() => {
+    function onPointer(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+        inputRef.current?.blur();
+      }
+    }
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  const showFlyout = open && hasTerm;
+
   return (
-    <form
-      action="/search"
-      method="get"
-      role="search"
-      className="hidden h-10 items-center gap-2 rounded-2xl border-[0.5px] border-black/20 px-4 focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-400/60 lg:flex"
+    <div
+      ref={containerRef}
+      className="relative hidden w-80 lg:block xl:w-[26rem]"
     >
-      <SearchIcon className="h-4 w-4 shrink-0 text-muted" />
-      <input
-        type="search"
-        name="q"
-        placeholder="Search"
-        aria-label="Search"
-        className="w-28 !m-0 !border-0 !bg-transparent !p-0 !text-sm !leading-none text-ink placeholder:text-muted focus:!outline-none xl:w-40"
-      />
-    </form>
+      <form
+        role="search"
+        onSubmit={onSubmit}
+        className="flex h-10 w-full items-center gap-2 rounded-2xl border-[0.5px] border-black/20 pl-4 pr-1 focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-400/60"
+      >
+        <input
+          ref={inputRef}
+          type="search"
+          name="q"
+          value={term}
+          onChange={onChange}
+          onFocus={() => hasTerm && setOpen(true)}
+          placeholder="What can we help you find?"
+          aria-label="Search"
+          autoComplete="off"
+          spellCheck={false}
+          className="min-w-0 flex-1 !m-0 !border-0 !bg-transparent !p-0 !text-sm !leading-none text-ink placeholder:text-muted focus:!outline-none"
+        />
+        {voice.supported && (
+          <MicButton
+            listening={voice.listening}
+            onToggle={voice.toggle}
+            className="h-8 w-8"
+          />
+        )}
+        <button
+          type="submit"
+          aria-label="Search"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-mint hover:text-ink"
+        >
+          <SearchIcon className="h-4 w-4" />
+        </button>
+      </form>
+
+      {showFlyout && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-black/10 bg-paper shadow-xl">
+          <div className="max-h-[70vh] overflow-y-auto no-scrollbar">
+            <PredictiveResults
+              items={items}
+              total={total}
+              term={term}
+              loading={loading}
+              onClose={() => setOpen(false)}
+              onSelectQuery={(t) => goToSearch(t)}
+            />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

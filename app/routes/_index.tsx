@@ -1,11 +1,8 @@
-import {Await, useLoaderData, Link} from 'react-router';
+import {Await, useLoaderData, useRouteLoaderData, Link} from 'react-router';
 import type {Route} from './+types/_index';
+import type {RootLoader} from '~/root';
 import {Suspense, useEffect, useRef, useState} from 'react';
-import {Image} from '@shopify/hydrogen';
-import type {
-  RecommendedProductsQuery,
-  HomeCollectionsQuery,
-} from 'storefrontapi.generated';
+import type {RecommendedProductsQuery} from 'storefrontapi.generated';
 import {ProductItem} from '~/components/ProductItem';
 import {siteOrigin} from '~/lib/seo';
 
@@ -63,21 +60,34 @@ export const meta: Route.MetaFunction = ({matches}) => {
 };
 
 export async function loader(args: Route.LoaderArgs) {
-  const deferredData = loadDeferredData(args);
-  const criticalData = await loadCriticalData(args);
-  return {...deferredData, ...criticalData};
+  // The "Shop by category" tiles reuse the live departments already resolved by
+  // the root loader (same real-time verticals as the nav) — no extra query here.
+  return {...loadDeferredData(args)};
 }
 
-async function loadCriticalData({context}: Route.LoaderArgs) {
-  const [{collections}] = await Promise.all([
-    context.storefront.query(HOME_COLLECTIONS_QUERY),
-  ]);
-
-  return {
-    collections: collections.nodes,
-    featuredCollection: collections.nodes[0],
-  };
+/** Filename-safe slug for a department, e.g. "Home & Garden" → "home-garden".
+ *  Used to look up the department's art in CATEGORY_IMAGES below. */
+function categorySlug(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 }
+
+// Department art for the "Shop by category" bento, keyed by slug. Hosted on the
+// store's Shopify CDN (same origin as the hero). A slug with no entry here falls
+// back to the branded gradient tile.
+const CDN = 'https://cdn.shopify.com/s/files/1/0716/2609/6792/files';
+const CATEGORY_IMAGES: Record<string, string> = {
+  'home-garden': `${CDN}/home_and_decor.png?v=1792446975`,
+  electronics: `${CDN}/electronics.png?v=1792446974`,
+  'sporting-goods': `${CDN}/sporting_goods.png?v=1792446974`,
+  'health-beauty': `${CDN}/health_and_beauty.png?v=1792446974`,
+  'luggage-bags': `${CDN}/luggage_and_bags.png?v=1792446974`,
+  'arts-entertainment': `${CDN}/art.png?v=1792446974`,
+  hardware: `${CDN}/hardware.png?v=1792446974`,
+  'apparel-accessories': `${CDN}/apparell.png?v=1792446974`,
+};
 
 function loadDeferredData({context}: Route.LoaderArgs) {
   const recommendedProducts = context.storefront
@@ -92,11 +102,13 @@ function loadDeferredData({context}: Route.LoaderArgs) {
 
 export default function Homepage() {
   const data = useLoaderData<typeof loader>();
+  const rootData = useRouteLoaderData<RootLoader>('root');
+  const departments = rootData?.departments ?? [];
   return (
     <div className="bg-paper">
       <Hero />
       <ValueProps />
-      <CategoryTiles collections={data.collections} />
+      <CategoryTiles departments={departments} />
       <TrendingProducts products={data.recommendedProducts} />
       <ConsignBand />
       <NewsletterBand />
@@ -177,9 +189,13 @@ function Hero() {
       {/* Flat-lay backdrop (shared with the myResale portal) + dark gradient so
           white copy stays readable — darker on the left (text) than the right. */}
       <img
-        src="/hero-bg.jpg"
+        src="/hero-bg.webp"
+        srcSet="/hero-bg-1024.webp 1024w, /hero-bg.webp 1920w"
+        sizes="100vw"
         alt=""
         aria-hidden="true"
+        fetchPriority="high"
+        decoding="async"
         className="absolute inset-0 -z-10 h-full w-full object-cover"
       />
       <div
@@ -252,8 +268,11 @@ function Hero() {
             </div>
 
             <img
-              src="/hero-phone.png"
+              src="/hero-phone.webp"
+              srcSet="/hero-phone-680.webp 680w, /hero-phone.webp 1162w"
+              sizes="(min-width: 768px) 560px, 460px"
               alt="Shop Berlin Houseware from your phone"
+              decoding="async"
               className="pointer-events-none absolute inset-0 z-10 h-full w-full select-none object-contain"
               draggable={false}
             />
@@ -444,6 +463,9 @@ function PhoneProductCards({cards}: {cards: HeroCard[]}) {
                   <img
                     src={c.img}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
+                    fetchPriority="low"
                     className="absolute inset-0 h-full w-full object-cover"
                   />
                   <div className="absolute inset-x-0 bottom-1.5 flex justify-center gap-1">
@@ -535,7 +557,7 @@ function PhoneProductCards({cards}: {cards: HeroCard[]}) {
 /* Value props                                                                 */
 /* -------------------------------------------------------------------------- */
 function ValueProps() {
-  const svg = 'h-[18px] w-[18px]';
+  const svg = 'h-9 w-9 md:h-10 md:w-10';
   const items = [
     {
       t: 'Free shipping',
@@ -614,18 +636,20 @@ function ValueProps() {
   ];
   return (
     <section className="border-y border-black/10 bg-paper">
-      <div className="ui-container grid grid-cols-2 gap-y-6 py-7 md:grid-cols-4 md:gap-0 md:divide-x md:divide-black/10">
+      <div className="ui-container grid grid-cols-2 gap-x-6 gap-y-8 py-8 md:grid-cols-4 md:gap-0 md:divide-x md:divide-black/10 md:py-9">
         {items.map((i) => (
           <div
             key={i.t}
-            className="flex items-center gap-3.5 md:px-7 md:first:pl-0 md:last:pr-0"
+            className="group flex items-center gap-4 md:px-7 md:first:pl-0 md:last:pr-0"
           >
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-mint text-brand-700 ring-1 ring-brand-100">
+            <span className="shrink-0 text-brand-700 transition-transform duration-300 ease-out group-hover:scale-110">
               {i.icon}
             </span>
             <div>
-              <p className="text-sm font-bold leading-tight text-ink">{i.t}</p>
-              <p className="mt-0.5 text-xs leading-tight text-muted">{i.d}</p>
+              <p className="text-sm font-bold uppercase tracking-tight text-ink">
+                {i.t}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-muted">{i.d}</p>
             </div>
           </div>
         ))}
@@ -638,44 +662,75 @@ function ValueProps() {
 /* Category tiles                                                              */
 /* -------------------------------------------------------------------------- */
 function CategoryTiles({
-  collections,
+  departments,
 }: {
-  collections: HomeCollectionsQuery['collections']['nodes'];
+  departments: Array<{label: string; to: string}>;
 }) {
-  const tiles = collections.slice(0, 8);
+  const tiles = departments.slice(0, 8);
 
   return (
     <Section className="bg-paper">
       <SectionHead
         eyebrow="Browse"
         title="Shop by category"
-        cta={{label: 'View all', to: '/collections'}}
+        cta={{label: 'View all', to: '/collections/all'}}
       />
 
       {tiles.length ? (
-        // Real Shopify collections (with imagery) — uniform 1:1 square tiles
-        // that tile cleanly as more categories are added.
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {tiles.map((c) => (
-            <Link
-              key={c.id}
-              to={`/collections/${c.handle}`}
-              className="group relative aspect-square overflow-hidden rounded-3xl bg-mint-deep"
-            >
-              {c.image && (
-                <Image
-                  data={c.image}
-                  sizes="(min-width: 1280px) 16vw, (min-width: 1024px) 20vw, (min-width: 640px) 25vw, 33vw"
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  alt={c.image.altText || c.title}
-                />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-              <h3 className="absolute bottom-0 left-0 p-3 text-sm font-extrabold uppercase leading-tight text-white sm:text-base">
-                {c.title}
-              </h3>
-            </Link>
-          ))}
+        // Editorial bento: one large hero department + smaller tiles. Labels and
+        // links are live from the nav's real-time departments; the tile art is
+        // yours — drop a file at public/categories/<slug>.jpg (slug = the label,
+        // e.g. "Home & Garden" → home-garden.jpg). A branded gradient shows until
+        // that file exists, so the section never looks broken.
+        <div className="grid auto-rows-[9.5rem] grid-cols-2 gap-3 sm:auto-rows-[11rem] sm:grid-cols-3 lg:auto-rows-[12.5rem] lg:grid-cols-4">
+          {tiles.map((d, i) => {
+            const hero = i === 0;
+            const art = CATEGORY_IMAGES[categorySlug(d.label)];
+            return (
+              <Link
+                key={d.label}
+                to={d.to}
+                prefetch="intent"
+                className={`group relative overflow-hidden rounded-3xl bg-ink ${
+                  hero ? 'col-span-2 row-span-2' : ''
+                }`}
+              >
+                {/* Branded gradient fallback — shown for any unmapped department. */}
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-700 via-brand-800 to-ink" />
+                {/* Department art (Shopify CDN). */}
+                {art && (
+                  <div
+                    className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out group-hover:scale-[1.06]"
+                    style={{backgroundImage: `url(${art})`}}
+                  />
+                )}
+                {/* Legibility scrim for the label. */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+
+                {hero && (
+                  <span className="eyebrow absolute left-5 top-5 text-brand-300">
+                    Shop the department
+                  </span>
+                )}
+
+                <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-4 md:p-5">
+                  <h3
+                    className={`font-semibold uppercase leading-tight tracking-[0.02em] text-white ${
+                      hero ? 'text-xl md:text-3xl' : 'text-sm md:text-base'
+                    }`}
+                  >
+                    {d.label}
+                  </h3>
+                  <span
+                    aria-hidden="true"
+                    className="grid h-8 w-8 shrink-0 translate-y-1 place-items-center rounded-full text-white opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:bg-white/15 group-hover:opacity-100"
+                  >
+                    →
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       ) : (
         // Fallback: branded category tiles (shown until Shopify collections
@@ -871,29 +926,6 @@ function NewsletterBand() {
 /* -------------------------------------------------------------------------- */
 /* Queries                                                                      */
 /* -------------------------------------------------------------------------- */
-const HOME_COLLECTIONS_QUERY = `#graphql
-  fragment FeaturedCollection on Collection {
-    id
-    title
-    image {
-      id
-      url
-      altText
-      width
-      height
-    }
-    handle
-  }
-  query HomeCollections($country: CountryCode, $language: LanguageCode)
-    @inContext(country: $country, language: $language) {
-    collections(first: 8, sortKey: UPDATED_AT, reverse: true) {
-      nodes {
-        ...FeaturedCollection
-      }
-    }
-  }
-` as const;
-
 const RECOMMENDED_PRODUCTS_QUERY = `#graphql
   fragment RecommendedProduct on Product {
     id

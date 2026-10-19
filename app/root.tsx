@@ -19,6 +19,13 @@ import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
 import tailwindCss from './styles/tailwind.css?url';
 import {PageLayout} from './components/PageLayout';
+import type {Facet} from '~/components/CollectionFilters';
+import {
+  departmentFilterTo,
+  shopFilterTo,
+  verticalLabel,
+  verticalOf,
+} from '~/lib/taxonomy';
 
 export type RootLoader = typeof loader;
 
@@ -105,17 +112,77 @@ export async function loader(args: Route.LoaderArgs) {
 async function loadCriticalData({context}: Route.LoaderArgs) {
   const {storefront} = context;
 
-  const [header] = await Promise.all([
+  const [header, categoryData] = await Promise.all([
     storefront.query(HEADER_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
         headerMenuHandle: 'main-menu', // Adjust to your header menu handle
       },
     }),
-    // Add other queries here, so that they are loaded in parallel
+    // Real-time "Shop" categories — the live Product-type facet (same data the
+    // filter sidebar uses), so the nav needs no manually-curated collections.
+    storefront
+      .query(SHOP_CATEGORIES_QUERY, {cache: storefront.CacheLong()})
+      .catch((error: Error) => {
+        console.error(error);
+        return null;
+      }),
   ]);
 
-  return {header};
+  return {
+    header,
+    departments: toShopDepartments(
+      (categoryData?.search?.productFilters ?? []) as unknown as Facet[],
+    ),
+  };
+}
+
+/** Build the eBay-style "Shop" mega-menu from the live category facet: prefer
+ *  Shopify's taxonomy Category (`filter.p.t.category`, what this store uses),
+ *  group each live leaf under its top-level vertical (department), and deep-link
+ *  both the department (parent, hierarchical) and each leaf to the Shop page
+ *  with that filter pre-applied. Fully real-time — new categories self-populate.
+ *  The vertical name map + link builders live in `~/lib/taxonomy`. */
+function toShopDepartments(
+  productFilters: Facet[],
+): Array<{label: string; to: string; items: Array<{label: string; to: string}>}> {
+  if (!productFilters.length) return [];
+  const byId = (id: string) => productFilters.find((f) => f.id === id);
+  const facet =
+    byId('filter.p.t.category') ??
+    byId('filter.p.product_type') ??
+    productFilters.find((f) => /\bcategor(y|ies)\b|product type/i.test(f.label));
+  if (!facet) return [];
+
+  const groups = new Map<
+    string,
+    {label: string; items: Array<{label: string; to: string}>}
+  >();
+  for (const v of facet.values) {
+    if (v.count <= 0) continue;
+    let catId = '';
+    try {
+      catId =
+        (JSON.parse(v.input) as {category?: {id?: string}})?.category?.id ?? '';
+    } catch {
+      /* non-category facet value — skip grouping */
+    }
+    const vertical = verticalOf(catId);
+    if (!groups.has(vertical)) {
+      groups.set(vertical, {label: verticalLabel(vertical), items: []});
+    }
+    groups.get(vertical)!.items.push({label: v.label, to: shopFilterTo(v.input)});
+  }
+
+  return [...groups.entries()]
+    .map(([vertical, g]) => ({
+      label: g.label,
+      to: departmentFilterTo(vertical),
+      items: g.items.sort((a, b) => a.label.localeCompare(b.label)),
+    }))
+    .sort(
+      (a, b) => b.items.length - a.items.length || a.label.localeCompare(b.label),
+    );
 }
 
 /**
@@ -272,3 +339,25 @@ export function ErrorBoundary() {
     </section>
   );
 }
+
+// Live category source for the "Shop" nav dropdown: the Storefront search
+// Product-type facet across the whole catalog (query:"" = all products). We
+// only read `productFilters`, so `first: 1` keeps the payload minimal; the
+// facet reflects the full result set, not the single returned node.
+const SHOP_CATEGORIES_QUERY = `#graphql
+  query ShopCategories($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    search(query: "", types: [PRODUCT], first: 1) {
+      productFilters {
+        id
+        label
+        values {
+          id
+          label
+          count
+          input
+        }
+      }
+    }
+  }
+` as const;

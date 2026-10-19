@@ -47,18 +47,14 @@ import {createHydrogenRouterContext} from '~/lib/context';
 import {existsSync} from 'node:fs';
 
 const PORT = Number(process.env.PORT) || 3000;
-const MODE = process.env.NODE_ENV ?? 'production';
+// Dev is opted into with the `--dev` flag (see the npm "dev" script) — kept
+// flag-based so it's cross-platform (no `NODE_ENV=` prefix). Everything else
+// is production.
+const DEV =
+  process.argv.includes('--dev') || process.env.NODE_ENV === 'development';
+const MODE = DEV ? 'development' : (process.env.NODE_ENV ?? 'production');
 
-// react-router build output dir depends on config (hydrogenPreset -> dist).
-// Detect at boot so this works whether it lands in dist/ or build/.
-const BUILD_DIR = existsSync('dist/server/index.js') ? 'dist' : 'build';
-const CLIENT_DIR = `${BUILD_DIR}/client`;
-
-// The React Router server build. Imported via a runtime URL so `tsc`/typecheck
-// doesn't require the (generated) file to exist, and so it is not bundled.
-const serverBuild = (await import(
-  new URL(`../${BUILD_DIR}/server/index.js`, import.meta.url).href
-)) as unknown as Parameters<typeof createRequestHandler>[0]['build'];
+type HandlerBuild = Parameters<typeof createRequestHandler>[0]['build'];
 
 const app = express();
 
@@ -68,12 +64,42 @@ app.set('trust proxy', true);
 app.disable('x-powered-by');
 app.use(compression());
 
-// Static assets from the client build. Hashed assets are immutable.
-app.use(
-  '/assets',
-  express.static(`${CLIENT_DIR}/assets`, {immutable: true, maxAge: '1y'}),
-);
-app.use(express.static(CLIENT_DIR, {maxAge: '1h'}));
+// DEV: Vite in middleware mode provides HMR and loads the server build fresh on
+// each request (the react-router virtual module), on the SAME Node runtime as
+// prod. PROD: serve the built client assets and import the compiled server build
+// once. This dev/prod split is the standard React Router custom-server setup;
+// nothing here changes the `react-router build` output or the deploy.
+let getBuild: () => Promise<HandlerBuild> | HandlerBuild;
+let viteDevServer:
+  | Awaited<ReturnType<typeof import('vite').createServer>>
+  | undefined;
+
+if (DEV) {
+  const {createServer} = await import('vite');
+  viteDevServer = await createServer({
+    server: {middlewareMode: true},
+    appType: 'custom',
+  });
+  app.use(viteDevServer.middlewares);
+  getBuild = () =>
+    viteDevServer!.ssrLoadModule(
+      'virtual:react-router/server-build',
+    ) as Promise<HandlerBuild>;
+} else {
+  // react-router build output dir depends on config (hydrogenPreset -> dist).
+  const BUILD_DIR = existsSync('dist/server/index.js') ? 'dist' : 'build';
+  const CLIENT_DIR = `${BUILD_DIR}/client`;
+  app.use(
+    '/assets',
+    express.static(`${CLIENT_DIR}/assets`, {immutable: true, maxAge: '1y'}),
+  );
+  app.use(express.static(CLIENT_DIR, {maxAge: '1h'}));
+  // Imported via a runtime URL so typecheck doesn't need the generated file.
+  const serverBuild = (await import(
+    new URL(`../${BUILD_DIR}/server/index.js`, import.meta.url).href
+  )) as unknown as HandlerBuild;
+  getBuild = () => serverBuild;
+}
 
 app.use(async (req, res) => {
   const request = toWebRequest(req);
@@ -84,7 +110,7 @@ app.use(async (req, res) => {
     );
 
     const handleRequest = createRequestHandler({
-      build: serverBuild,
+      build: getBuild as unknown as HandlerBuild,
       mode: MODE,
       getLoadContext: () => context,
     });
@@ -105,6 +131,8 @@ app.use(async (req, res) => {
 
     await sendWebResponse(res, response);
   } catch (error) {
+    // In dev, rewrite the stack to point at the original source.
+    if (DEV && error instanceof Error) viteDevServer?.ssrFixStacktrace(error);
     console.error(error);
     if (!res.headersSent) {
       res.status(500).send('An unexpected error occurred');

@@ -7,7 +7,7 @@
   "scripts": {
     "build": "react-router build",
     "start": "node --import tsx server/index.ts",
-    "dev": "shopify hydrogen dev --codegen",
+    "dev": "node --env-file=.env --import tsx server/index.ts --dev",
     "lint": "eslint --no-error-on-unmatched-pattern .",
     "typecheck": "react-router typegen && tsc --noEmit",
     "codegen": "shopify hydrogen codegen && react-router typegen"
