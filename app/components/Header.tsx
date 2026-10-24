@@ -131,8 +131,24 @@ function AnnouncementBar() {
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setCollapsed(window.scrollY > 40);
-    onScroll();
+    // Hysteresis: collapse only past 64px, and re-expand only below 8px.
+    // A single threshold stutters because collapsing the bar shrinks the
+    // sticky header and shifts content right around that point, re-crossing
+    // it; the gap (wider than the bar's 32px height) stops the flip-flop.
+    // Tracked in a closure var so we compare against the live state without
+    // re-subscribing, and only call setState when it actually changes.
+    let isCollapsed = window.scrollY > 64;
+    setCollapsed(isCollapsed);
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (!isCollapsed && y > 64) {
+        isCollapsed = true;
+        setCollapsed(true);
+      } else if (isCollapsed && y < 8) {
+        isCollapsed = false;
+        setCollapsed(false);
+      }
+    };
     window.addEventListener('scroll', onScroll, {passive: true});
     return () => window.removeEventListener('scroll', onScroll);
   }, []);

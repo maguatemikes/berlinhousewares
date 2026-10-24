@@ -449,7 +449,7 @@ function Chip({
   onRemove: () => void;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-mint px-3 py-1 text-sm font-medium text-ink">
+    <span className="inline-flex items-center gap-1.5 rounded-2xl bg-mint px-3 py-1 text-sm font-medium text-ink">
       {children}
       <button
         type="button"

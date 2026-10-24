@@ -3,8 +3,10 @@ import {
   Await,
   Link,
   redirect,
+  useFetchers,
   useLoaderData,
   useRevalidator,
+  useRouteLoaderData,
 } from 'react-router';
 import type {Route} from './+types/products.$handle';
 import {sellerHandle} from '~/lib/sellers';
@@ -16,6 +18,7 @@ import {
   getAdjacentAndFirstAvailableVariants,
   useSelectedOptionInUrlParam,
   Money,
+  CartForm,
 } from '@shopify/hydrogen';
 import type {MoneyV2} from '@shopify/hydrogen/storefront-api-types';
 import type {RelatedProductFragment} from 'storefrontapi.generated';
@@ -245,24 +248,37 @@ export default function Product() {
     return out;
   })();
 
-  // Path A fulfillment — real pickup availability for the selected variant, from
-  // Shopify Local Pickup (`storeAvailability`). Stays empty (→ "Not available")
-  // until Local Pickup is enabled in Admin and the item is stocked at a pickup
-  // location; then it lights up automatically. Shipping/Delivery are informational.
-  const pickupNode =
-    selectedVariant?.storeAvailability?.nodes?.find((n) => n?.available) ?? null;
-  const pickup = {
-    available: Boolean(pickupNode),
-    locationName: pickupNode?.location?.name ?? null,
-    pickUpTime: pickupNode?.pickUpTime ?? null,
-  };
-
   return (
     <>
       <div className="ui-container py-8 md:py-12">
+        {/* Breadcrumb — Home / Shop / product. "Shop" is /collections/all
+          (the product query doesn't carry its taxonomy category). */}
+        <nav aria-label="Breadcrumb" className="mb-6 md:mb-8">
+          <ol className="flex flex-wrap items-center gap-2 text-xs text-muted">
+            <li>
+              <Link to="/" className="transition-colors hover:text-ink">
+                Home
+              </Link>
+            </li>
+            <li aria-hidden className="text-black/25">/</li>
+            <li>
+              <Link
+                to="/collections/all"
+                className="transition-colors hover:text-ink"
+              >
+                Shop
+              </Link>
+            </li>
+            <li aria-hidden className="text-black/25">/</li>
+            <li aria-current="page" className="line-clamp-1 font-medium text-ink">
+              {title}
+            </li>
+          </ol>
+        </nav>
+
         <div className="grid gap-8 lg:grid-cols-[3fr_2fr] lg:gap-12">
           {/* Gallery */}
-          <div className="lg:sticky lg:top-28 lg:self-start">
+          <div className="min-w-0 lg:sticky lg:top-28 lg:self-start">
             <ProductGallery
               images={galleryImages}
               title={title}
@@ -293,16 +309,8 @@ export default function Product() {
             <h1 className="mt-2 text-3xl font-extrabold uppercase leading-tight tracking-tight md:text-4xl">
               {title}
             </h1>
-            {/* Brand under the title — the vendor's only home (the eyebrow is
-              seller-only now). Hidden when it's just the store-default vendor. */}
-            {product.vendor &&
-              !product.vendor.toLowerCase().includes('berlinhouseware') && (
-                <p className="mt-1 text-sm text-muted">
-                  Brand: {product.vendor}
-                </p>
-              )}
 
-            <div className="mt-4">
+            <div className="mt-5">
               <ProductPrice price={lineTotal} compareAtPrice={compareTotal} />
               {quantity > 1 && unitPrice && (
                 <p className="mt-1 text-sm text-muted">
@@ -317,13 +325,13 @@ export default function Product() {
                 selectedVariant={selectedVariant}
                 quantity={quantity}
                 setQuantity={setQuantity}
+                deliverySlot={<PdpDeliveryOptions />}
               />
             </div>
 
-            <FulfillmentOptions pickup={pickup} />
             <TrustLine />
 
-            <div className="mt-8 border-t border-black/10">
+            <div className="mt-10 border-t border-black/10">
               <Accordion title="Description" defaultOpen>
                 <div
                   className="prose max-w-none text-sm text-muted [&_a]:text-brand-700 [&_a]:underline"
@@ -444,123 +452,6 @@ function Stars({count = 5}: {count?: number}) {
   );
 }
 
-/**
- * Fulfillment options — STATIC UI ONLY (no logic yet). Mirrors the Target/Walmart
- * PDP pattern (Pickup / Delivery / Shipping) for design review. States are
- * hardcoded placeholders; wiring to real storeAvailability/inventory comes later.
- */
-function FulfillmentOptions({
-  pickup,
-}: {
-  pickup: {
-    available: boolean;
-    locationName?: string | null;
-    pickUpTime?: string | null;
-  };
-}) {
-  const sp = {
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.7,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    className: 'h-5 w-5',
-    'aria-hidden': true,
-  };
-  const options = [
-    {
-      key: 'pickup',
-      label: 'Pickup',
-      sub: pickup.available
-        ? pickup.locationName || 'Available in store'
-        : 'Not available',
-      selectable: pickup.available,
-      accent: pickup.available,
-      icon: (
-        <svg {...sp}>
-          <path d="M4 9h16M5 9l1-4h12l1 4M5 9v11h14V9M9 20v-6h6v6" />
-        </svg>
-      ),
-    },
-    {
-      key: 'delivery',
-      label: 'Delivery',
-      sub: 'Check availability',
-      selectable: true,
-      accent: false,
-      icon: (
-        <svg {...sp}>
-          <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
-          <circle cx="12" cy="10" r="3" />
-        </svg>
-      ),
-    },
-    {
-      key: 'shipping',
-      label: 'Shipping',
-      sub: 'Free over $75',
-      selectable: true,
-      accent: true,
-      icon: (
-        <svg {...sp}>
-          <path d="M1 4h15v12H1zM16 8h4l3 3v5h-7" />
-          <circle cx="5.5" cy="18.5" r="1.6" />
-          <circle cx="18.5" cy="18.5" r="1.6" />
-        </svg>
-      ),
-    },
-  ];
-  const [method, setMethod] = useState<string>(
-    pickup.available ? 'pickup' : 'shipping',
-  );
-
-  return (
-    <div className="mt-8">
-      <p className="mb-3 text-sm font-semibold text-ink">How you&apos;ll get it</p>
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        {options.map((o) => {
-          const isSelected = method === o.key;
-          return (
-            <button
-              key={o.key}
-              type="button"
-              onClick={() => o.selectable && setMethod(o.key)}
-              disabled={!o.selectable}
-              aria-pressed={isSelected}
-              className={`rounded-2xl border-2 p-3 text-left transition-colors ${
-                isSelected
-                  ? 'border-brand-600 bg-mint'
-                  : 'border-black/10 bg-white hover:border-black/25'
-              } ${o.selectable ? '' : 'cursor-not-allowed opacity-60'}`}
-            >
-              <span className={o.accent ? 'text-brand-700' : 'text-muted'}>
-                {o.icon}
-              </span>
-              <div className="mt-2 text-sm font-bold text-ink">{o.label}</div>
-              <div
-                className={`mt-0.5 text-xs ${
-                  o.accent ? 'text-brand-700' : 'text-muted'
-                }`}
-              >
-                {o.sub}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-      {method === 'pickup' && pickup.available && pickup.pickUpTime ? (
-        <p className="mt-3 text-xs text-muted">
-          Ready {pickup.pickUpTime.toLowerCase()} at{' '}
-          <span className="font-semibold text-ink">
-            {pickup.locationName || 'our store'}
-          </span>
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
 function TrustLine() {
   return (
     <p className="mt-6 flex items-center gap-2 text-xs text-muted">
@@ -582,6 +473,163 @@ function TrustLine() {
       authentic
     </p>
   );
+}
+
+/**
+ * PDP fulfillment selector — the SAME two tiles and action the cart uses
+ * (`CartDeliveryOptions`): clicking Pickup / Ship fires `CustomSetDeliveryMethod`
+ * on the /cart route, which sets the checkout delivery preference and mirrors it
+ * to the `delivery_method` cart attribute. Works without a line item (operates on
+ * the cart itself). Highlight is optimistic (pending fetcher) and settles to the
+ * saved cart attribute. No outer bordered wrapper on the PDP.
+ */
+function PdpDeliveryOptions() {
+  const root = useRouteLoaderData('root') as
+    | {cart?: Promise<{attributes?: Array<{key: string; value: string}>} | null>}
+    | undefined;
+  const pending = usePendingDeliveryMethod();
+  // Local optimistic choice — set the instant a tile is clicked so the highlight
+  // flips immediately and NEVER reverts while the cart write + root revalidation
+  // settle in the background (the CartForm still persists it). It wins over the
+  // in-flight fetcher and the saved attribute, and survives the Await re-suspend
+  // because this component stays mounted across it.
+  const [choice, setChoice] = useState<string | null>(null);
+
+  const tiles = (saved: string | null) => (
+    <PdpDeliveryTiles active={choice ?? pending ?? saved} onPick={setChoice} />
+  );
+
+  return (
+    <div className="mb-6">
+      <p className="text-sm font-semibold text-ink">How you&rsquo;ll get it</p>
+      <Suspense fallback={tiles(null)}>
+        <Await resolve={root?.cart} errorElement={tiles(null)}>
+          {(cart) =>
+            tiles(
+              cart?.attributes?.find((a) => a.key === 'delivery_method')
+                ?.value ?? null,
+            )
+          }
+        </Await>
+      </Suspense>
+      <p className="mt-2 text-xs text-muted">
+        Pre-selects your choice at checkout — you can still change it there.
+      </p>
+    </div>
+  );
+}
+
+function PdpDeliveryTiles({
+  active,
+  onPick,
+}: {
+  active: string | null;
+  onPick: (method: string) => void;
+}) {
+  const ICON = {
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.4,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    className: 'h-9 w-9',
+    'aria-hidden': true,
+  };
+  return (
+    <div className="mt-2 grid grid-cols-2 gap-2 [&_form]:w-full [&_form]:max-w-none">
+      <PdpDeliveryTile
+        method="PICK_UP"
+        label="Pickup"
+        sub="Berlin, NJ"
+        active={active === 'PICK_UP'}
+        onPick={onPick}
+        icon={
+          <svg {...ICON}>
+            <path d="M12 21s-6-5.686-6-10a6 6 0 1 1 12 0c0 4.314-6 10-6 10z" />
+            <circle cx="12" cy="11" r="2.5" />
+          </svg>
+        }
+      />
+      <PdpDeliveryTile
+        method="SHIPPING"
+        label="Ship"
+        sub="To your address"
+        active={active === 'SHIPPING'}
+        onPick={onPick}
+        icon={
+          <svg {...ICON}>
+            <path d="M1 4h15v12H1zM16 8h4l3 3v5h-7" />
+            <circle cx="5.5" cy="18.5" r="1.6" />
+            <circle cx="18.5" cy="18.5" r="1.6" />
+          </svg>
+        }
+      />
+    </div>
+  );
+}
+
+function PdpDeliveryTile({
+  method,
+  label,
+  sub,
+  active,
+  icon,
+  onPick,
+}: {
+  method: 'PICK_UP' | 'SHIPPING';
+  label: string;
+  sub: string;
+  active: boolean;
+  icon: React.ReactNode;
+  onPick: (method: string) => void;
+}) {
+  return (
+    <CartForm route="/cart" action="CustomSetDeliveryMethod" inputs={{method}}>
+      <button
+        type="submit"
+        onClick={() => onPick(method)}
+        aria-pressed={active}
+        className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-colors ${
+          active
+            ? 'border-brand-600 bg-mint'
+            : 'border-black/15 bg-white hover:border-black/25'
+        }`}
+      >
+        <span className={`shrink-0 ${active ? 'text-brand-700' : 'text-muted'}`}>
+          {icon}
+        </span>
+        <span className="flex min-w-0 flex-col">
+          <span className="text-sm font-bold text-ink">{label}</span>
+          <span className="truncate text-xs text-muted">{sub}</span>
+        </span>
+      </button>
+    </CartForm>
+  );
+}
+
+/** Delivery method of an in-flight CustomSetDeliveryMethod submit, so the
+ *  clicked PDP tile highlights immediately (before the server responds). */
+function usePendingDeliveryMethod(): string | null {
+  const fetchers = useFetchers();
+  for (const f of fetchers) {
+    if (f.state === 'idle' || !f.formData) continue;
+    for (const value of f.formData.values()) {
+      if (
+        typeof value === 'string' &&
+        value.includes('CustomSetDeliveryMethod')
+      ) {
+        try {
+          const parsed = JSON.parse(value) as {inputs?: {method?: string}};
+          const m = parsed?.inputs?.method;
+          if (m) return String(m);
+        } catch {
+          // not the JSON payload — keep looking
+        }
+      }
+    }
+  }
+  return null;
 }
 
 function Accordion({
@@ -678,7 +726,7 @@ const PRODUCT_FRAGMENT = `#graphql
     handle
     descriptionHtml
     description
-    images(first: 12) {
+    images(first: 100) {
       nodes {
         id
         url

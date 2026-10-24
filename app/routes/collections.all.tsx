@@ -95,24 +95,17 @@ export default function ShopAll() {
 
   return (
     <div className="bg-paper">
-      <div className="bg-mint">
-        <div className="ui-container py-12">
-          <span className="eyebrow text-brand-700">Browse everything</span>
-          <h1 className="mt-3 text-4xl font-extrabold uppercase tracking-tight md:text-6xl">
-            Shop
-          </h1>
-        </div>
-      </div>
-
       <div className="ui-container flex flex-col gap-8 py-10 lg:flex-row">
         {/* Desktop sidebar (a div, not <aside> — the global `aside` rule is
             reserved for the fixed drawers) */}
         <div className="hidden lg:block lg:w-60 lg:shrink-0">
-          <div className="sticky top-28">
-            <p className="mb-5 text-sm font-bold uppercase tracking-wide text-ink">
+          <div className="sticky top-28 flex max-h-[calc(100vh-8rem)] flex-col">
+            <p className="mb-5 shrink-0 text-sm font-bold uppercase tracking-wide text-ink">
               Filters
             </p>
-            <CollectionFilters facets={facets} />
+            <div className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto pr-4 pb-4">
+              <CollectionFilters facets={facets} />
+            </div>
           </div>
         </div>
 

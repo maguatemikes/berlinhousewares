@@ -14,11 +14,14 @@ export function ProductForm({
   selectedVariant,
   quantity,
   setQuantity,
+  deliverySlot,
 }: {
   productOptions: MappedProductOptions[];
   selectedVariant: ProductFragment['selectedOrFirstAvailableVariant'];
   quantity: number;
   setQuantity: Dispatch<SetStateAction<number>>;
+  /** Rendered between Quantity and the Add to cart / Buy it now actions. */
+  deliverySlot?: React.ReactNode;
 }) {
   const navigate = useNavigate();
   const {open} = useAside();
@@ -62,15 +65,17 @@ export function ProductForm({
                   variantUriQuery,
                   selected,
                   available: valueAvailable,
-                  exists,
                   isDifferentProduct,
                   swatch,
                 } = value;
 
+                // Out of stock OR a combo that doesn't exist → non-selectable.
+                const unavailable = !valueAvailable;
+
                 const commonProps = {
                   key: option.name + name,
-                  title: name,
-                  'aria-label': name,
+                  title: unavailable ? `${name} — unavailable` : name,
+                  'aria-label': unavailable ? `${name} (unavailable)` : name,
                 };
 
                 const content = isColor ? (
@@ -78,11 +83,26 @@ export function ProductForm({
                     swatch={swatch}
                     name={name}
                     selected={selected}
+                    unavailable={unavailable}
                     variantImage={value.firstSelectableVariant?.image?.url}
                   />
                 ) : (
-                  <SizeBox name={name} selected={selected} />
+                  <SizeBox name={name} selected={selected} unavailable={unavailable} />
                 );
+
+                // Unavailable values are static & non-clickable (no Link, no
+                // onClick) — the diagonal/line-through cue lives in the swatch/box.
+                if (unavailable) {
+                  return (
+                    <span
+                      {...commonProps}
+                      aria-disabled="true"
+                      className="cursor-not-allowed opacity-40"
+                    >
+                      {content}
+                    </span>
+                  );
+                }
 
                 if (isDifferentProduct) {
                   return (
@@ -92,7 +112,6 @@ export function ProductForm({
                       preventScrollReset
                       replace
                       to={`/products/${handle}?${variantUriQuery}`}
-                      style={{opacity: valueAvailable ? 1 : 0.35}}
                     >
                       {content}
                     </Link>
@@ -103,8 +122,6 @@ export function ProductForm({
                   <button
                     {...commonProps}
                     type="button"
-                    disabled={!exists}
-                    style={{opacity: valueAvailable ? 1 : 0.35}}
                     onClick={() => {
                       if (!selected) {
                         void navigate(`?${variantUriQuery}`, {
@@ -113,7 +130,6 @@ export function ProductForm({
                         });
                       }
                     }}
-                    className="disabled:cursor-not-allowed"
                   >
                     {content}
                   </button>
@@ -124,10 +140,13 @@ export function ProductForm({
         );
       })}
 
-      {/* Quantity */}
-      <div className="mb-6">
-        <h3 className="mb-2 text-sm font-semibold text-ink">Quantity</h3>
-        <div className="inline-flex h-11 items-center overflow-hidden rounded-2xl border border-black/15">
+      {deliverySlot}
+
+      {/* Actions — Quantity + Add to cart on row 1; Buy it now spans the full
+          width below (across the quantity column too). AddToCartButton wraps its
+          button in a <form>, so grow the FORM (not just the button) to fill. */}
+      <div className="flex items-stretch gap-3 [&>form]:max-w-none [&>form]:flex-1">
+        <div className="inline-flex h-11 shrink-0 items-center overflow-hidden rounded-2xl border border-black/15">
           <button
             type="button"
             aria-label="Decrease quantity"
@@ -163,10 +182,6 @@ export function ProductForm({
             </svg>
           </button>
         </div>
-      </div>
-
-      {/* Actions */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <AddToCartButton
           className="btn bg-coral text-white hover:bg-coral-dark w-full min-h-11 rounded-2xl disabled:cursor-not-allowed disabled:opacity-40"
           disabled={!available}
@@ -175,6 +190,8 @@ export function ProductForm({
         >
           {available ? 'Add to cart' : 'Sold out'}
         </AddToCartButton>
+      </div>
+      <div className="mt-3 [&>form]:w-full [&>form]:max-w-none">
         <AddToCartButton
           className="btn btn-dark w-full min-h-11 rounded-2xl disabled:cursor-not-allowed disabled:opacity-40"
           disabled={!available}
@@ -227,11 +244,13 @@ function ColorSwatch({
   name,
   selected,
   variantImage,
+  unavailable,
 }: {
   swatch?: Maybe<ProductOptionValueSwatch> | undefined;
   name: string;
   selected: boolean;
   variantImage?: string | null;
+  unavailable?: boolean;
 }) {
   // Priority: native swatch image → variant photo → native swatch colour →
   // name→hex → neutral grey. Image wins visually; colour sits behind it as a
@@ -244,7 +263,7 @@ function ColorSwatch({
 
   return (
     <span
-      className={`grid h-9 w-9 place-items-center transition ${shape} ${
+      className={`relative grid h-9 w-9 place-items-center transition ${shape} ${
         selected ? 'ring-2 ring-ink ring-offset-2' : 'ring-1 ring-black/10'
       }`}
     >
@@ -257,17 +276,30 @@ function ColorSwatch({
       >
         <span className="sr-only">{name}</span>
       </span>
+      {unavailable && (
+        <span className="pointer-events-none absolute left-1/2 top-1/2 h-px w-[135%] -translate-x-1/2 -translate-y-1/2 rotate-45 bg-ink/50" />
+      )}
     </span>
   );
 }
 
-function SizeBox({name, selected}: {name: string; selected: boolean}) {
+function SizeBox({
+  name,
+  selected,
+  unavailable,
+}: {
+  name: string;
+  selected: boolean;
+  unavailable?: boolean;
+}) {
   return (
     <span
       className={`inline-flex h-11 min-w-11 items-center justify-center rounded-lg border px-3 text-sm font-semibold transition ${
         selected
           ? 'border-ink bg-ink text-white'
-          : 'border-black/15 bg-white text-ink hover:border-ink'
+          : unavailable
+            ? 'border-black/15 bg-white text-muted line-through'
+            : 'border-black/15 bg-white text-ink hover:border-ink'
       }`}
     >
       {name}

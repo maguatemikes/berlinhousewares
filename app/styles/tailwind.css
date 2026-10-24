@@ -175,6 +175,26 @@
     display: none; /* Chrome / Safari / WebKit */
   }
 
+  /* Thin, muted scrollbar — visible but unobtrusive (filter sidebar, etc.) */
+  .scrollbar-subtle {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+  }
+  .scrollbar-subtle::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-subtle::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-subtle::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.12);
+    border-radius: 9999px;
+  }
+  .scrollbar-subtle::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+
   /* Smooth morph for the product-card add-to-cart ⇄ quantity swap: the newly
      mounted control eases in (fade + slight scale) instead of popping. */
   .morph-in {

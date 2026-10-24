@@ -131,11 +131,13 @@ export default function Collection() {
       <div className="ui-container flex flex-col gap-8 py-10 lg:flex-row">
         {/* Desktop sidebar */}
         <div className="hidden lg:block lg:w-60 lg:shrink-0">
-          <div className="sticky top-28">
-            <p className="mb-5 text-sm font-bold uppercase tracking-wide text-ink">
+          <div className="sticky top-28 flex max-h-[calc(100vh-8rem)] flex-col">
+            <p className="mb-5 shrink-0 text-sm font-bold uppercase tracking-wide text-ink">
               Filters
             </p>
-            <CollectionFilters facets={facets} />
+            <div className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto pr-4 pb-4">
+              <CollectionFilters facets={facets} />
+            </div>
           </div>
         </div>
 

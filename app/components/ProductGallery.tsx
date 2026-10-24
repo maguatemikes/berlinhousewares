@@ -25,7 +25,9 @@ export function ProductGallery({
   // pitfall of putting one ref on whichever button is active.
   const railRef = useRef<HTMLDivElement | null>(null);
   const mobileRailRef = useRef<HTMLDivElement | null>(null);
+  const mainRef = useRef<HTMLDivElement | null>(null);
   const didMountRef = useRef(false);
+  const didImgMountRef = useRef(false);
 
   // When the selected variant changes, jump the gallery to that variant's image.
   // Only re-runs when the variant image URL changes (not on every images rebuild),
@@ -34,6 +36,33 @@ export function ProductGallery({
     if (!activeImageUrl) return;
     const idx = images.findIndex((img) => img.url === activeImageUrl);
     if (idx >= 0) setActive(idx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeImageUrl]);
+
+  // When the variant IMAGE changes (a swatch that actually changes the photo),
+  // bring the main image into view — but ONLY if it's mostly scrolled off-screen,
+  // so it never yanks the page when the gallery is already visible (e.g. the
+  // desktop sticky column). Fires on the image URL rather than `active`, so Size/
+  // Packaging picks that keep the same photo don't scroll. Skips first mount and
+  // honours reduced-motion. (The old `block:'nearest'` thumbnail scroll was a
+  // no-op whenever the target was already partly in view — this is the real fix.)
+  useEffect(() => {
+    if (!activeImageUrl) return;
+    if (!didImgMountRef.current) {
+      didImgMountRef.current = true;
+      return;
+    }
+    const el = mainRef.current;
+    if (!el || typeof window === 'undefined') return;
+    const rect = el.getBoundingClientRect();
+    // Skip only when the image's TOP is already comfortably visible (at/below the
+    // sticky header). This covers the desktop sticky column (top ≈ top-28) and the
+    // just-landed state. Otherwise the top is cut off above the header (even if the
+    // image is "mostly" visible, since it's taller than the viewport) → scroll it
+    // back so the new variant photo reads from the top.
+    const headerOffset = 80;
+    if (rect.top >= headerOffset) return;
+    el.scrollIntoView({behavior: 'auto', block: 'start'});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeImageUrl]);
 
@@ -49,18 +78,28 @@ export function ProductGallery({
     const reduce =
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const opts: ScrollIntoViewOptions = {
-      behavior: reduce ? 'auto' : 'smooth',
-      block: 'nearest',
-      inline: 'nearest',
-    };
+    const behavior: ScrollBehavior = reduce ? 'auto' : 'smooth';
+    // Scroll the rail INTERNALLY (its own scrollLeft/scrollTop) to reveal the
+    // active thumbnail — never `scrollIntoView`, which bubbles up and scrolls the
+    // WINDOW. That window scroll was fighting the page-level gallery reveal above
+    // and is why clicking a 2nd-row swatch (whose thumbnail sits far down/along
+    // the rail, off-screen) lost the scroll.
     const reveal = (rail: HTMLDivElement | null) => {
-      // Skip a rail that's display:none (offsetParent === null) — only the rail
-      // for the current breakpoint should scroll, and calling scrollIntoView on a
-      // hidden element is a no-op that can interfere with the visible one.
       if (!rail || rail.offsetParent === null) return;
       const idx = Math.min(active, rail.children.length - 1);
-      (rail.children[idx] as HTMLElement | undefined)?.scrollIntoView(opts);
+      const child = rail.children[idx] as HTMLElement | undefined;
+      if (!child) return;
+      const c = child.getBoundingClientRect();
+      const r = rail.getBoundingClientRect();
+      if (rail.scrollWidth > rail.clientWidth + 1) {
+        const left =
+          rail.scrollLeft + (c.left - r.left) - (rail.clientWidth - c.width) / 2;
+        rail.scrollTo({left: Math.max(0, left), behavior});
+      } else {
+        const top =
+          rail.scrollTop + (c.top - r.top) - (rail.clientHeight - c.height) / 2;
+        rail.scrollTo({top: Math.max(0, top), behavior});
+      }
     };
     reveal(railRef.current);
     reveal(mobileRailRef.current);
@@ -115,7 +154,7 @@ export function ProductGallery({
         </div>
 
         {/* Main image */}
-        <div className="relative flex-1">
+        <div ref={mainRef} className="relative flex-1 scroll-mt-24 md:scroll-mt-28">
           <div className="aspect-square overflow-hidden rounded-3xl bg-mint">
             <Image
               data={main}
