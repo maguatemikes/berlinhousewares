@@ -24,6 +24,9 @@ declare global {
     PUBLIC_CUSTOMER_ACCOUNT_API_URL: string;
     PUBLIC_CHECKOUT_DOMAIN: string;
     SHOP_ID: string;
+    // Google Tag Manager container id (e.g. GTM-XXXXXXX). Optional: when unset,
+    // the GTM snippet + dataLayer bridge are no-ops.
+    PUBLIC_GTM_ID?: string;
     // Berlin-specific (ResaleOS / Admin / seller-sync gate)
     PRIVATE_RESALEOS_API_KEY?: string;
     PRIVATE_ADMIN_API_TOKEN?: string;

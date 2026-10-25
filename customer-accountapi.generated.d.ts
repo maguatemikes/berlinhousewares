@@ -186,7 +186,14 @@ export type CustomerMenuQueryVariables = CustomerAccountAPI.Exact<{
 }>;
 
 export type CustomerMenuQuery = {
-  customer: Pick<CustomerAccountAPI.Customer, 'firstName' | 'lastName'>;
+  customer: Pick<CustomerAccountAPI.Customer, 'firstName' | 'lastName'> & {
+    emailAddress?: CustomerAccountAPI.Maybe<
+      Pick<CustomerAccountAPI.CustomerEmailAddress, 'emailAddress'>
+    >;
+    phoneNumber?: CustomerAccountAPI.Maybe<
+      Pick<CustomerAccountAPI.CustomerPhoneNumber, 'phoneNumber'>
+    >;
+  };
 };
 
 export type OrderMoneyFragment = Pick<
@@ -543,7 +550,7 @@ interface GeneratedQueryTypes {
     return: CustomerDetailsQuery;
     variables: CustomerDetailsQueryVariables;
   };
-  '#graphql\n  query CustomerMenu {\n    customer {\n      firstName\n      lastName\n    }\n  }\n': {
+  '#graphql\n  query CustomerMenu {\n    customer {\n      firstName\n      lastName\n      emailAddress {\n        emailAddress\n      }\n      phoneNumber {\n        phoneNumber\n      }\n    }\n  }\n': {
     return: CustomerMenuQuery;
     variables: CustomerMenuQueryVariables;
   };

@@ -326,6 +326,11 @@ export default function Product() {
                 quantity={quantity}
                 setQuantity={setQuantity}
                 deliverySlot={<PdpDeliveryOptions />}
+                product={{
+                  id: product.id,
+                  title: product.title,
+                  vendor: product.vendor,
+                }}
               />
             </div>
 
@@ -390,6 +395,7 @@ export default function Product() {
               variantId: selectedVariant?.id || '',
               variantTitle: selectedVariant?.title || '',
               quantity: 1,
+              sku: selectedVariant?.sku || undefined,
             },
           ],
         }}

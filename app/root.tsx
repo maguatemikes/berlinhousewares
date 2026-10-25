@@ -19,6 +19,7 @@ import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
 import tailwindCss from './styles/tailwind.css?url';
 import {PageLayout} from './components/PageLayout';
+import {GoogleTagManager, gtmSnippet} from './components/GoogleTagManager';
 import type {Facet} from '~/components/CollectionFilters';
 import {
   departmentFilterTo,
@@ -90,6 +91,9 @@ export async function loader(args: Route.LoaderArgs) {
     // Public request origin, so route meta can build absolute canonical/og URLs.
     origin: new URL(args.request.url).origin,
     publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
+    // GTM container id. When unset, the GTM snippet + subscriber are no-ops, so
+    // merging the analytics wiring changes nothing until this is configured.
+    gtmId: env.PUBLIC_GTM_ID,
     shop: getShopAnalytics({
       storefront,
       publicStorefrontId: env.PUBLIC_STOREFRONT_ID,
@@ -229,10 +233,17 @@ function loadDeferredData({context}: Route.LoaderArgs) {
   };
 }
 
-type HeaderCustomer = {firstName?: string | null; lastName?: string | null};
+type HeaderCustomer = {
+  firstName?: string | null;
+  lastName?: string | null;
+  emailAddress?: {emailAddress?: string | null} | null;
+  phoneNumber?: {phoneNumber?: string | null} | null;
+};
 
 export function Layout({children}: {children?: React.ReactNode}) {
   const nonce = useNonce();
+  const data = useRouteLoaderData<RootLoader>('root');
+  const gtmId = data?.gtmId;
 
   return (
     <html lang="en">
@@ -244,8 +255,25 @@ export function Layout({children}: {children?: React.ReactNode}) {
         <link rel="stylesheet" href={appStyles}></link>
         <Meta />
         <Links />
+        {gtmId ? (
+          <script
+            nonce={nonce}
+            dangerouslySetInnerHTML={{__html: gtmSnippet(gtmId, nonce)}}
+          />
+        ) : null}
       </head>
       <body>
+        {gtmId ? (
+          <noscript>
+            <iframe
+              src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
+              height="0"
+              width="0"
+              style={{display: 'none', visibility: 'hidden'}}
+              title="Google Tag Manager"
+            />
+          </noscript>
+        ) : null}
         {children}
         <ScrollRestoration nonce={nonce} />
         <Scripts nonce={nonce} />
@@ -267,6 +295,7 @@ export default function App() {
       shop={data.shop}
       consent={data.consent}
     >
+      <GoogleTagManager />
       <PageLayout {...data}>
         <Outlet />
       </PageLayout>

@@ -1,12 +1,13 @@
 import {type Dispatch, type SetStateAction} from 'react';
 import {Link, useNavigate} from 'react-router';
-import {type MappedProductOptions} from '@shopify/hydrogen';
+import {type MappedProductOptions, useAnalytics} from '@shopify/hydrogen';
 import type {
   Maybe,
   ProductOptionValueSwatch,
 } from '@shopify/hydrogen/storefront-api-types';
 import {AddToCartButton} from './AddToCartButton';
 import {useAside} from './Aside';
+import {BEGIN_CHECKOUT_EVENT} from '~/lib/analytics/dataLayer';
 import type {ProductFragment} from 'storefrontapi.generated';
 
 export function ProductForm({
@@ -15,6 +16,7 @@ export function ProductForm({
   quantity,
   setQuantity,
   deliverySlot,
+  product,
 }: {
   productOptions: MappedProductOptions[];
   selectedVariant: ProductFragment['selectedOrFirstAvailableVariant'];
@@ -22,9 +24,12 @@ export function ProductForm({
   setQuantity: Dispatch<SetStateAction<number>>;
   /** Rendered between Quantity and the Add to cart / Buy it now actions. */
   deliverySlot?: React.ReactNode;
+  /** Minimal product identity for the begin_checkout event on "Buy it now". */
+  product?: {id: string; title: string; vendor?: string};
 }) {
   const navigate = useNavigate();
   const {open} = useAside();
+  const {publish, shop} = useAnalytics();
   const available = Boolean(selectedVariant?.availableForSale);
 
   const lines = selectedVariant
@@ -197,6 +202,27 @@ export function ProductForm({
           disabled={!available}
           redirectTo="checkout"
           lines={lines}
+          onClick={() => {
+            // begin_checkout / Meta InitiateCheckout for the direct-to-checkout
+            // path (add_to_cart still fires from the cart diff).
+            if (!selectedVariant || !product) return;
+            publish(BEGIN_CHECKOUT_EVENT, {
+              shop,
+              url: window.location.href,
+              products: [
+                {
+                  id: product.id,
+                  title: product.title,
+                  vendor: product.vendor,
+                  price: selectedVariant.price?.amount ?? '0',
+                  variantId: selectedVariant.id,
+                  variantTitle: selectedVariant.title,
+                  quantity,
+                  sku: selectedVariant.sku ?? undefined,
+                },
+              ],
+            });
+          }}
         >
           Buy it now
         </AddToCartButton>

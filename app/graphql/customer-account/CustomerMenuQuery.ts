@@ -7,6 +7,12 @@ export const CUSTOMER_MENU_QUERY = `#graphql
     customer {
       firstName
       lastName
+      emailAddress {
+        emailAddress
+      }
+      phoneNumber {
+        phoneNumber
+      }
     }
   }
 ` as const;

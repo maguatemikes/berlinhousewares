@@ -1,9 +1,10 @@
 import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import type {CartLayout} from '~/components/CartMain';
-import {CartForm, Money, type OptimisticCart} from '@shopify/hydrogen';
+import {CartForm, Money, useAnalytics, type OptimisticCart} from '@shopify/hydrogen';
 import {Link} from 'react-router';
 import {useAside} from '~/components/Aside';
 import {CartDeliveryOptions} from '~/components/CartDeliveryOptions';
+import {BEGIN_CHECKOUT_EVENT} from '~/lib/analytics/dataLayer';
 
 type CartSummaryProps = {
   cart: OptimisticCart<CartApiQueryFragment | null>;
@@ -77,7 +78,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
       {/* Actions */}
       <div className="space-y-2">
-        <CartCheckoutButton checkoutUrl={cart?.checkoutUrl} />
+        <CartCheckoutButton checkoutUrl={cart?.checkoutUrl} cart={cart} />
         {layout === 'aside' ? (
           <button
             type="button"
@@ -109,13 +110,25 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   );
 }
 
-function CartCheckoutButton({checkoutUrl}: {checkoutUrl?: string}) {
+function CartCheckoutButton({
+  checkoutUrl,
+  cart,
+}: {
+  checkoutUrl?: string;
+  cart?: OptimisticCart<CartApiQueryFragment | null>;
+}) {
+  const {publish, shop} = useAnalytics();
   if (!checkoutUrl) return null;
   return (
     <a
       href={checkoutUrl}
       target="_self"
       className="btn bg-coral text-white hover:bg-coral-dark w-full"
+      onClick={() => {
+        // begin_checkout / Meta InitiateCheckout — fires with the full cart as
+        // the user leaves for Shopify-hosted checkout.
+        publish(BEGIN_CHECKOUT_EVENT, {shop, cart, url: window.location.href});
+      }}
     >
       Proceed to Checkout →
     </a>
