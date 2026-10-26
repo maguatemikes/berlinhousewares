@@ -84,16 +84,20 @@ export async function loader(args: Route.LoaderArgs) {
   const criticalData = await loadCriticalData(args);
 
   const {storefront, env} = args.context;
+  // Public request origin, so route meta can build absolute canonical/og URLs.
+  const origin = new URL(args.request.url).origin;
+  const isLocalHost = origin.includes('localhost') || origin.includes('127.0.0.1');
 
   return {
     ...deferredData,
     ...criticalData,
-    // Public request origin, so route meta can build absolute canonical/og URLs.
-    origin: new URL(args.request.url).origin,
+    origin,
     publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
-    // GTM container id. When unset, the GTM snippet + subscriber are no-ops, so
-    // merging the analytics wiring changes nothing until this is configured.
-    gtmId: env.PUBLIC_GTM_ID,
+    // GTM container. An explicit PUBLIC_GTM_ID always wins (so a different
+    // container can be used per environment, or tracking disabled). Otherwise
+    // default to the Berlin container on any real host, and stay OFF on
+    // localhost so local dev traffic never reaches the live pixel.
+    gtmId: env.PUBLIC_GTM_ID || (isLocalHost ? undefined : 'GTM-WZ9DLLX4'),
     shop: getShopAnalytics({
       storefront,
       publicStorefrontId: env.PUBLIC_STOREFRONT_ID,
