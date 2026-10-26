@@ -1,9 +1,10 @@
 import {Link} from 'react-router';
-import {Image, Money} from '@shopify/hydrogen';
+import {Image, Money, useAnalytics} from '@shopify/hydrogen';
 import {
   urlWithTrackingParams,
   type PredictiveSearchReturn,
 } from '~/lib/search';
+import {SEARCH_EVENT} from '~/lib/analytics/dataLayer';
 
 type PredictiveSearchItems = PredictiveSearchReturn['result']['items'];
 
@@ -48,9 +49,28 @@ export function PredictiveResults({
   onClose: () => void;
   onSelectQuery: (text: string) => void;
 }) {
+  const {publish} = useAnalytics();
   const products = items.products.slice(0, 5);
   const collections = items.collections.slice(0, 3);
   const queries = items.queries.filter(Boolean).slice(0, 5);
+
+  // A predictive result (product/collection) was selected → a search happened,
+  // but this path navigates straight to the item without visiting /search, so
+  // fire the native SEARCH_VIEWED ourselves (GTM/Meta/Shopify then count it).
+  // The suggestion rows + "View all" go through onSelectQuery → /search, which
+  // already fires SEARCH_VIEWED, so this never double-counts. Covers mouse and
+  // keyboard (the result is an <a>, so Enter triggers its onClick too).
+  function onSelectResult() {
+    const t = term?.trim();
+    if (t) {
+      try {
+        publish(SEARCH_EVENT, {search_term: t});
+      } catch {
+        /* analytics must never block navigation */
+      }
+    }
+    onClose();
+  }
 
   if (total === 0) {
     return (
@@ -102,7 +122,7 @@ export function PredictiveResults({
               <Link
                 key={product.id}
                 to={url}
-                onClick={onClose}
+                onClick={onSelectResult}
                 className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-mint"
               >
                 <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-mint">
@@ -146,7 +166,7 @@ export function PredictiveResults({
               <Link
                 key={collection.id}
                 to={url}
-                onClick={onClose}
+                onClick={onSelectResult}
                 className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm text-ink transition-colors hover:bg-mint"
               >
                 <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-mint">

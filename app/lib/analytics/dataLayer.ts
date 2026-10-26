@@ -29,6 +29,11 @@ declare global {
  *  catch-all, so dispatch is by exact key match. */
 export const BEGIN_CHECKOUT_EVENT = 'custom_begin_checkout' as const;
 
+/** Custom event for a predictive-search result selection — that path navigates
+ *  straight to the item without visiting /search, so SEARCH_VIEWED never fires.
+ *  Publish/subscribe by this exact key (publish() has no SEARCH_VIEWED overload). */
+export const SEARCH_EVENT = 'custom_search' as const;
+
 export type DLItem = {
   item_id: string;
   item_name?: string;

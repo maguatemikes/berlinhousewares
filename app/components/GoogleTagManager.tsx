@@ -10,6 +10,7 @@ import {
   itemFromCartLine,
   ecommerceFromCart,
   BEGIN_CHECKOUT_EVENT,
+  SEARCH_EVENT,
   type AnalyticsProduct,
   type AnalyticsCart,
   type AnalyticsCartLine,
@@ -117,11 +118,22 @@ export function GoogleTagManager() {
       });
     });
 
-    // search — results page. Fire the GA4 `search` event with the term.
+    // search — /search results page (Enter / "View all"). Fire GA4 `search`.
     subscribe(AnalyticsEvent.SEARCH_VIEWED, (payload) => {
       if (!allowed()) return;
       if (!payload?.searchTerm) return;
       pushEvent('search', {search_term: payload.searchTerm});
+    });
+
+    // search — predictive result selected (product/collection clicked in the
+    // dropdown, which navigates straight to the item without hitting /search).
+    // Published as a custom event by PredictiveResults. Mutually exclusive with
+    // the /search path above, so no double-count.
+    subscribe(SEARCH_EVENT, (payload) => {
+      if (!allowed()) return;
+      const term = payload?.search_term as string | undefined;
+      if (!term) return;
+      pushEvent('search', {search_term: term});
     });
 
     // view_cart — bag opened / cart page.
