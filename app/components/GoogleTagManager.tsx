@@ -1,4 +1,4 @@
-import {useEffect} from 'react';
+import {useEffect, useRef} from 'react';
 import {useRouteLoaderData} from 'react-router';
 import {useAnalytics, AnalyticsEvent} from '@shopify/hydrogen';
 import type {RootLoader} from '~/root';
@@ -33,7 +33,12 @@ import {
  */
 export function GoogleTagManager() {
   const {subscribe, canTrack, shop} = useAnalytics();
-  const shopCurrency = shop?.currency;
+  // `shop` (hence its currency) resolves async — AFTER the subscribe effect's
+  // single run — so a plain closure over it is stale/undefined. Read it through a
+  // ref each render keeps current. Product events also carry the variant's own
+  // currencyCode (preferred, always present synchronously on the PDP).
+  const shopCurrencyRef = useRef<string | undefined>(undefined);
+  if (shop?.currency) shopCurrencyRef.current = shop.currency;
   const rootData = useRouteLoaderData<RootLoader>('root');
   const customer = rootData?.customer;
 
@@ -89,7 +94,7 @@ export function GoogleTagManager() {
       if (!products.length) return;
       const items = products.map((p, i) => itemFromProduct(p, i));
       pushEcommerce('view_item', {
-        currency: shopCurrency,
+        currency: products[0]?.currencyCode || shopCurrencyRef.current,
         value: items.reduce((s, it) => s + (it.price ?? 0) * (it.quantity ?? 1), 0),
         items,
       });
@@ -166,7 +171,7 @@ export function GoogleTagManager() {
       if (!products.length) return;
       const items = products.map((p, i) => itemFromProduct(p, i));
       pushEcommerce('begin_checkout', {
-        currency: shopCurrency,
+        currency: products[0]?.currencyCode || shopCurrencyRef.current,
         value: items.reduce((s, it) => s + (it.price ?? 0) * (it.quantity ?? 1), 0),
         items,
       });

@@ -118,6 +118,7 @@ export type AnalyticsProduct = {
   id: string; // product gid
   title: string;
   price: string | number;
+  currencyCode?: string | null; // from the variant's price; drives the event currency
   vendor?: string;
   variantId: string; // variant gid
   variantTitle?: string;

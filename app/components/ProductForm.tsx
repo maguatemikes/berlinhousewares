@@ -215,6 +215,7 @@ export function ProductForm({
                   title: product.title,
                   vendor: product.vendor,
                   price: selectedVariant.price?.amount ?? '0',
+                  currencyCode: selectedVariant.price?.currencyCode,
                   variantId: selectedVariant.id,
                   variantTitle: selectedVariant.title,
                   quantity,
