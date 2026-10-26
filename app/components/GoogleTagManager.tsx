@@ -94,27 +94,11 @@ export function GoogleTagManager() {
       const products = (payload?.products ?? []) as AnalyticsProduct[];
       if (!products.length) return;
       const items = products.map((p, i) => itemFromProduct(p, i));
-      const push = () =>
-        pushEcommerce('view_item', {
-          currency: products[0]?.currencyCode || shopCurrencyRef.current,
-          value: items.reduce((s, it) => s + (it.price ?? 0) * (it.quantity ?? 1), 0),
-          items,
-        });
-      // The Meta pixel stamps every browser event with `document.location` at the
-      // instant it fires. view_item is the only event that fires *as a result of*
-      // navigation, so on a fast SPA transition it can occasionally fire a tick
-      // before the URL has committed to the product page — which would attribute
-      // ViewContent to the previous URL. Defer one frame ONLY in that case (URL not
-      // yet a /products/ path) so the pixel reads the settled product URL; fire
-      // immediately otherwise to avoid any mis-attribution on rapid navigation.
-      if (
-        typeof window !== 'undefined' &&
-        !window.location.pathname.includes('/products/')
-      ) {
-        requestAnimationFrame(push);
-      } else {
-        push();
-      }
+      pushEcommerce('view_item', {
+        currency: products[0]?.currencyCode || shopCurrencyRef.current,
+        value: items.reduce((s, it) => s + (it.price ?? 0) * (it.quantity ?? 1), 0),
+        items,
+      });
     });
 
     // view_item_list — collection. The native collection_viewed payload carries
