@@ -34,6 +34,8 @@ export default async function handleRequest(
       'https://shopify.com',
       'https://www.googletagmanager.com',
       'https://connect.facebook.net',
+      // Stape server-side GTM: the Data Tag's loader script (dtag/v9.js).
+      'https://stapecdn.com',
     ],
     // Hero phone's hot-linked stock imagery + Shopify CDN + the GA4/GTM/Meta
     // tracking pixels (Meta's fbevents fires a facebook.com/tr image GET).
@@ -62,6 +64,8 @@ export default async function handleRequest(
       'https://*.analytics.google.com',
       'https://connect.facebook.net',
       'https://www.facebook.com',
+      // Stape server-side GTM: browser Data Tag POSTs events to our tagging server.
+      'https://tracking.berlinhousewares.com',
     ],
     // Shopify frames (Shop Pay etc., via default-src hosts) + the GTM <noscript>
     // fallback iframe.
