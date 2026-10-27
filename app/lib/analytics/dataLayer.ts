@@ -75,7 +75,13 @@ export function pushEcommerce(event: string, ecommerce: DLEcommerce) {
   if (typeof window === 'undefined') return;
   const dl = (window.dataLayer = window.dataLayer || []);
   dl.push({ecommerce: null});
-  dl.push({event, ecommerce});
+  // Stamp the event with the URL at push time. The ecommerce events (view_item,
+  // add_to_cart, …) fire a tick BEFORE the route's page_view, so without this the
+  // event would inherit the PREVIOUS page's page_location in GTM's merged model
+  // (e.g. a view_item showing the /collections URL you navigated from). The SPA
+  // nav commits the URL before Analytics.*View publishes, so window.location is
+  // already the current page here. Purely additive — existing params unchanged.
+  dl.push({event, page_location: window.location.href, ecommerce});
 }
 
 /** Push a non-ecommerce event (e.g. `page_view`, `search`). */
