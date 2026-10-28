@@ -102,6 +102,24 @@ export default async function handleRequest(
   responseHeaders.set('Content-Type', 'text/html');
   responseHeaders.set('Content-Security-Policy', header);
 
+  // First-party external_id cookie for Meta/GA advanced matching (read by GTM's
+  // `UTIL - External ID` variable, then forwarded on every browser + server
+  // event). Set server-side so it's guaranteed present on the first document
+  // load, first-party, and ITP-resistant — a JS-minted cookie caps ~7 days on
+  // Safari and was proving unreliable. Not HttpOnly on purpose: GTM reads it from
+  // document.cookie. `append` (not `set`) so it rides alongside Hydrogen's
+  // cart/session Set-Cookie headers already on responseHeaders, never clobbering
+  // them. `Secure` only over https so local dev (http) still sets it.
+  const cookieHeader = request.headers.get('cookie') || '';
+  if (!/(?:^|;\s*)_bh_eid=/.test(cookieHeader)) {
+    const eid = crypto.randomUUID();
+    const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
+    responseHeaders.append(
+      'Set-Cookie',
+      `_bh_eid=${eid}; Path=/; Max-Age=63072000; SameSite=Lax; Domain=.berlinhousewares.com${secure}`,
+    );
+  }
+
   return new Response(body, {
     headers: responseHeaders,
     status: responseStatusCode,
