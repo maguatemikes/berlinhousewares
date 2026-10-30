@@ -4,17 +4,25 @@ import type {Route} from './+types/sellers.$handle';
 import {ProductItem} from '~/components/ProductItem';
 import {SelectMenu} from '~/components/SelectMenu';
 import {getSeller, type SellerSort} from '~/lib/sellers.server';
+import {siteOrigin, socialMeta} from '~/lib/seo';
 
-export const meta: Route.MetaFunction = ({data}) => {
-  const name = data?.seller?.name;
+export const meta: Route.MetaFunction = ({data, matches}) => {
+  const seller = data?.seller;
+  const name = seller?.name;
+  const title = name ? `${name} — Berlin Houseware` : 'Seller — Berlin Houseware';
+  const description = name
+    ? `Shop ${name}'s store on Berlin Houseware — ${seller?.productCount} products.`
+    : 'Seller store on Berlin Houseware.';
+  // Prefer the seller's own logo, then a product photo, else the site image.
+  const image =
+    seller?.logoUrl || seller?.previewImages?.[0]?.url || undefined;
+  const url = seller
+    ? `${siteOrigin(matches)}/sellers/${seller.handle}`
+    : undefined;
   return [
-    {title: name ? `${name} — Berlin Houseware` : 'Seller — Berlin Houseware'},
-    {
-      name: 'description',
-      content: name
-        ? `Shop ${name}'s store on Berlin Houseware — ${data?.seller?.productCount} products.`
-        : 'Seller store on Berlin Houseware.',
-    },
+    {title},
+    {name: 'description', content: description},
+    ...socialMeta({title, description, url, image}),
   ];
 }
 

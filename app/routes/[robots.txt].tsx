@@ -16,10 +16,14 @@ export function loader({request}: Route.LoaderArgs) {
 
 function robotsTxtData({url}: {url?: string}) {
   const sitemapUrl = url ? `${url}/sitemap.xml` : undefined;
+  // Custom sitemap for our own routes (home, consign, sellers) — Shopify's auto
+  // sitemap only covers products/collections/pages/blogs.
+  const pagesSitemapUrl = url ? `${url}/sitemap-pages.xml` : undefined;
 
   return `
 User-agent: *
 ${generalDisallowRules({sitemapUrl})}
+${pagesSitemapUrl ? `Sitemap: ${pagesSitemapUrl}` : ''}
 
 # Google adsbot ignores robots.txt unless specifically named!
 User-agent: adsbot-google

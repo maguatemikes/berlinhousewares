@@ -11,7 +11,7 @@ import {
   type Facet,
 } from '~/components/CollectionFilters';
 import {GridPending} from '~/components/GridPending';
-import {siteOrigin} from '~/lib/seo';
+import {siteOrigin, SITE_SHARE_IMAGE} from '~/lib/seo';
 
 export const meta: Route.MetaFunction = ({matches}) => {
   const title = 'Shop All — Berlin Houseware';
@@ -31,6 +31,8 @@ export const meta: Route.MetaFunction = ({matches}) => {
     {name: 'twitter:card', content: 'summary_large_image'},
     {name: 'twitter:title', content: title},
     {name: 'twitter:description', content: description},
+    {property: 'og:image', content: SITE_SHARE_IMAGE},
+    {name: 'twitter:image', content: SITE_SHARE_IMAGE},
   ];
 };
 

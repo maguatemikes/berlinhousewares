@@ -1,4 +1,5 @@
 import type {Route} from './+types/consign';
+import {siteOrigin, socialMeta} from '~/lib/seo';
 
 /**
  * Consignor signup/management lives in the ResaleOS portal — we link out to it
@@ -121,19 +122,19 @@ const WHY_US = [
   },
 ];
 
-export const meta: Route.MetaFunction = () => {
+export const meta: Route.MetaFunction = ({matches}) => {
+  const title = 'Sell & Consign Homeware | Berlin Houseware — New & Pre-Loved';
+  const description =
+    'Consign with Berlin Houseware, the curated marketplace for new and verified pre-loved homeware. We photograph, price, list, and ship your items to buyers shopping our new collection — earn up to 80% when they sell, with no listing fees.';
   return [
-    {title: 'Sell & Consign Homeware | Berlin Houseware — New & Pre-Loved'},
-    {
-      name: 'description',
-      content:
-        'Consign with Berlin Houseware, the curated marketplace for new and verified pre-loved homeware. We photograph, price, list, and ship your items to buyers shopping our new collection — earn up to 80% when they sell, with no listing fees.',
-    },
+    {title},
+    {name: 'description', content: description},
     {
       name: 'keywords',
       content:
         'consign homeware, sell homeware online, homeware consignment, new and pre-loved homeware, pre-loved home décor, sell furniture, home consignment store, Berlin Houseware',
     },
+    ...socialMeta({title, description, url: `${siteOrigin(matches)}/consign`}),
     {
       'script:ld+json': {
         '@context': 'https://schema.org',
