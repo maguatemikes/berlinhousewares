@@ -17,6 +17,7 @@ import express from 'express';
 import compression from 'compression';
 import {createRequestHandler, storefrontRedirect} from '@shopify/hydrogen';
 import {createHydrogenRouterContext} from '~/lib/context';
+import {runSellerSync} from '~/lib/seller-sync.server';
 
 // ── Node/undici compat ─────────────────────────────────────────────────────
 // undici requires `duplex: "half"` whenever a Request/fetch carries a (stream)
@@ -143,6 +144,41 @@ app.use(async (req, res) => {
 app.listen(PORT, () => {
   console.log(`[berlin] listening on http://127.0.0.1:${PORT} (${MODE})`);
 });
+
+// ── Scheduled seller reconcile ──────────────────────────────────────────────
+// Replaces the old Cloudflare cron. Every 5 min, make each product's
+// custom.seller match its ResaleOS consignor — WRITES ONLY ON CHANGE, so a quiet
+// tick is a few cheap reads and zero writes. New registrations / re-assignments
+// show on the seller pages within ~5 min with no manual step.
+//
+// Prod only: in dev, run it on demand via /admin/run-seller-sync?key=… (same fn).
+if (!DEV) {
+  const SWEEP_MS = 5 * 60_000;
+  let sweeping = false; // never let two runs overlap
+  const sweep = async () => {
+    if (sweeping) return;
+    sweeping = true;
+    try {
+      const s = await runSellerSync(process.env as unknown as Parameters<typeof runSellerSync>[0]);
+      // Stay quiet on no-op ticks; log only when something changed or failed.
+      if (s.linked || s.createdSellers || !s.ok) {
+        console.log(
+          `[berlin] seller sweep: checked=${s.checked} linked=${s.linked} ` +
+            `created=${s.createdSellers} unchanged=${s.unchanged} ok=${s.ok}` +
+            (s.reason ? ` reason=${s.reason}` : '') +
+            (s.errors.length ? ` errors=${s.errors.length}` : ''),
+        );
+      }
+    } catch (e) {
+      console.error('[berlin] seller sweep error:', e);
+    } finally {
+      sweeping = false;
+    }
+  };
+  setInterval(sweep, SWEEP_MS).unref?.();
+  setTimeout(sweep, 30_000).unref?.(); // first pass ~30s after boot
+  console.log('[berlin] seller reconcile scheduled every 5 min');
+}
 
 /** Express request -> web Request (WHATWG). */
 function toWebRequest(req: express.Request): Request {

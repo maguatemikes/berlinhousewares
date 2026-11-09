@@ -181,6 +181,14 @@ export default function Product() {
 
   // Seller state for the eyebrow: linked → link; fresh + unlinked → "syncing".
   const sellerRef = product.seller?.reference;
+  // Only a real consignor store counts as the seller (handle = ResaleOS account
+  // id, e.g. "a-840975"). A brand-fallback store or the vendor string never
+  // shows in the eyebrow — the brand has its own line under the title.
+  const sellerSlug = sellerRef
+    ? sellerHandle(sellerRef.slug?.value?.trim() || sellerRef.handle)
+    : '';
+  const consignorName = sellerRef?.displayName?.value?.trim() || '';
+  const isConsignorSeller = /^a-\d+$/.test(sellerSlug) && consignorName !== '';
   const SYNC_WINDOW_MS = 15 * 60 * 1000;
   const sellerSyncing =
     !sellerRef &&
@@ -291,15 +299,13 @@ export default function Product() {
             {/* Eyebrow = SELLER slot only (brand lives under the title).
               linked → link · fresh+unlinked → syncing (self-refreshing) ·
               old+unlinked → nothing. State computed above with the poller. */}
-            {sellerRef ? (
+            {isConsignorSeller ? (
               <Link
-                to={`/sellers/${sellerHandle(
-                  sellerRef.slug?.value?.trim() || sellerRef.handle,
-                )}`}
+                to={`/sellers/${sellerSlug}`}
                 prefetch="intent"
                 className="eyebrow text-brand-700 underline-offset-4 transition-colors hover:text-brand-800 hover:underline"
               >
-                {sellerRef.displayName?.value?.trim() || product.vendor}
+                {consignorName}
               </Link>
             ) : sellerSyncing ? (
               <span className="eyebrow animate-pulse text-muted">
@@ -309,6 +315,13 @@ export default function Product() {
             <h1 className="mt-2 text-3xl font-extrabold uppercase leading-tight tracking-tight md:text-4xl">
               {title}
             </h1>
+            {/* Brand lives under the title (seller is the eyebrow above). */}
+            {product.vendor ? (
+              <p className="mt-2 text-sm text-muted">
+                Brand:{' '}
+                <span className="font-semibold text-ink">{product.vendor}</span>
+              </p>
+            ) : null}
 
             <div className="mt-5">
               <ProductPrice price={lineTotal} compareAtPrice={compareTotal} />

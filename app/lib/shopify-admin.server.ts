@@ -111,22 +111,35 @@ async function adminGraphQL<T = Record<string, unknown>>(
 
 /**
  * Get a seller metaobject by its stable handle, or create it if missing.
- * On an existing seller we DO NOT touch display_name — so re-running the sync
- * never clobbers a name the seller (or you) has edited. New sellers are seeded
- * with the placeholder name and set ACTIVE so the Storefront can read them.
+ * On an existing seller we only REFRESH an auto-placeholder name ("" or
+ * "Seller A-…") with the real name once ResaleOS provides it — a name you (or
+ * the seller) edited by hand is never clobbered. New sellers are seeded with the
+ * given name and set ACTIVE so the Storefront can read them.
  */
 export async function ensureSeller(
   env: AdminEnv,
   {slug, displayName}: {slug: string; displayName: string},
 ): Promise<{id: string; created: boolean}> {
   const existing = await adminGraphQL<{
-    metaobjectByHandle: {id: string} | null;
+    metaobjectByHandle:
+      | {id: string; displayName?: {value: string | null} | null}
+      | null;
   }>(env, METAOBJECT_BY_HANDLE, {
     handle: {type: 'seller', handle: slug},
   });
 
   if (existing.metaobjectByHandle?.id) {
-    return {id: existing.metaobjectByHandle.id, created: false};
+    const id = existing.metaobjectByHandle.id;
+    const current = existing.metaobjectByHandle.displayName?.value?.trim() ?? '';
+    // Refresh ONLY an auto-placeholder ("" or "Seller A-…"); leave edits alone.
+    const isPlaceholder = current === '' || /^seller\s/i.test(current);
+    if (isPlaceholder && displayName && displayName !== current) {
+      await adminGraphQL(env, METAOBJECT_UPDATE, {
+        id,
+        metaobject: {fields: [{key: 'display_name', value: displayName}]},
+      });
+    }
+    return {id, created: false};
   }
 
   const created = await adminGraphQL<{
@@ -184,7 +197,18 @@ export async function setProductSeller(
 // validation). Responses are typed via the adminGraphQL<T> generic instead.
 const METAOBJECT_BY_HANDLE = `
   query SellerByHandle($handle: MetaobjectHandleInput!) {
-    metaobjectByHandle(handle: $handle) { id }
+    metaobjectByHandle(handle: $handle) {
+      id
+      displayName: field(key: "display_name") { value }
+    }
+  }
+`;
+
+const METAOBJECT_UPDATE = `
+  mutation UpdateSeller($id: ID!, $metaobject: MetaobjectUpdateInput!) {
+    metaobjectUpdate(id: $id, metaobject: $metaobject) {
+      userErrors { field message }
+    }
   }
 `;
 

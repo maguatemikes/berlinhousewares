@@ -20,6 +20,90 @@ export type Consignor = {accountId: string; name: string | null};
 
 type ResaleosEnv = {PRIVATE_RESALEOS_API_KEY?: string};
 
+/**
+ * List consignor accounts from ResaleOS (/accounts). Used to refresh seller
+ * store names directly, without a per-product scan.
+ */
+export async function getConsignors(
+  env: ResaleosEnv,
+): Promise<Array<{accountId: string; name: string}>> {
+  const key = env.PRIVATE_RESALEOS_API_KEY;
+  if (!key) return [];
+  const res = await fetch(`${API_BASE}/accounts?limit=250`, {
+    headers: {Authorization: `Bearer ${key}`},
+  });
+  if (!res.ok) return [];
+  const json = (await res.json()) as
+    | Array<Record<string, unknown>>
+    | {accounts?: Array<Record<string, unknown>>};
+  const rows = Array.isArray(json) ? json : (json.accounts ?? []);
+  const out: Array<{accountId: string; name: string}> = [];
+  for (const a of rows) {
+    const accountId = (a.accountId as string) || '';
+    const types = (a.accountTypes as string[]) || [];
+    if (!accountId) continue;
+    if (types.length && !types.includes('consignor')) continue;
+    out.push({
+      accountId,
+      name:
+        (a.name as string) ||
+        (a.companyName as string) ||
+        `Seller ${accountId}`,
+    });
+  }
+  return out;
+}
+
+/**
+ * Build a map of **Shopify product numeric id → consignor** for the WHOLE
+ * ResaleOS catalogue, in one paginated pass. This is the join the scheduled
+ * reconcile sweep uses: it reads each product's Shopify id from
+ * `channels[shopify].externalId` (stripping any `-variantId` tail so a
+ * variant-composite id still resolves to its product) and its `consignor`.
+ *
+ * Products with no consignor, or no Shopify channel, are simply absent from the
+ * map — the sweep then leaves those Shopify products untouched (never links them
+ * to a brand store).
+ */
+export async function getConsignorMapByShopifyProductId(
+  env: ResaleosEnv,
+): Promise<Map<string, Consignor>> {
+  const map = new Map<string, Consignor>();
+  const key = env.PRIVATE_RESALEOS_API_KEY;
+  if (!key) return map;
+  for (let page = 1; page <= 40; page++) {
+    const res = await fetch(`${API_BASE}/products?limit=250&page=${page}`, {
+      headers: {Authorization: `Bearer ${key}`},
+    });
+    if (!res.ok) break;
+    const json = (await res.json()) as {
+      products?: Array<{
+        consignor?: {accountId?: string | null; name?: string | null} | null;
+        channels?: Array<{platform?: string; externalId?: string | null}>;
+      }>;
+      pagination?: {totalPages?: number};
+    };
+    const products = json.products ?? [];
+    for (const p of products) {
+      const c = p.consignor;
+      if (!c?.accountId) continue;
+      const shop = (p.channels ?? []).find(
+        (ch) => ch.platform === 'shopify' && ch.externalId,
+      );
+      if (!shop?.externalId) continue;
+      // externalId is either "15478630613144" or "15478630613144-6775…"
+      // (product-variant composite) — the product id is the part before "-".
+      const productId = String(shop.externalId).split('-')[0];
+      if (productId) {
+        map.set(productId, {accountId: c.accountId, name: c.name ?? null});
+      }
+    }
+    const totalPages = json.pagination?.totalPages ?? 1;
+    if (page >= totalPages || products.length === 0) break;
+  }
+  return map;
+}
+
 // In-memory per-worker cache — one ResaleOS lookup per resaleosId per instance.
 const cache = new Map<string, Consignor | null>();
 

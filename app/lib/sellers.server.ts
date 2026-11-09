@@ -170,12 +170,21 @@ function toSummary(s: Scanned): SellerSummary {
   };
 }
 
-/** All sellers (that have at least one tagged product), alphabetical by name. */
+/**
+ * Consignor store handles are the ResaleOS account ID, e.g. "a-840975".
+ * Brand-fallback stores (e.g. "all-bath") don't match this, so the directory
+ * lists only real consignor stores. (Brand links stay intact but hidden here;
+ * as products are reassigned to a consignor they appear automatically.)
+ */
+const CONSIGNOR_HANDLE = /^a-\d+$/;
+
+/** All consignor sellers (that have at least one product), alphabetical by name. */
 export async function getSellerDirectory(
   storefront: Storefront,
 ): Promise<SellerSummary[]> {
   const map = await scanSellers(storefront);
   return [...map.values()]
+    .filter((s) => CONSIGNOR_HANDLE.test(s.handle))
     .map(toSummary)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
