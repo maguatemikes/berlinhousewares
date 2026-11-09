@@ -1,7 +1,16 @@
+import {useState} from 'react';
 import {useLoaderData} from 'react-router';
+import {getPaginationVariables, Pagination, Analytics} from '@shopify/hydrogen';
 import type {Route} from './+types/search';
-import {getPaginationVariables, Analytics} from '@shopify/hydrogen';
-import {SearchResults} from '~/components/SearchResults';
+import {ProductItem} from '~/components/ProductItem';
+import {
+  CollectionFilters,
+  SortMenu,
+  ActiveFilterChips,
+  useFilterPending,
+  type Facet,
+} from '~/components/CollectionFilters';
+import {GridPending} from '~/components/GridPending';
 import {
   type RegularSearchReturn,
   type PredictiveSearchReturn,
@@ -10,6 +19,7 @@ import {
 import type {
   RegularSearchQuery,
   PredictiveSearchQuery,
+  ProductItemFragment,
 } from 'storefrontapi.generated';
 
 export const meta: Route.MetaFunction = ({location}) => {
@@ -43,46 +53,168 @@ export async function loader({request, context}: Route.LoaderArgs) {
  * Renders the /search route
  */
 export default function SearchPage() {
-  const {type, term, result, error} = useLoaderData<typeof loader>();
-  if (type === 'predictive') return null;
+  const data = useLoaderData<typeof loader>();
+  // Hooks must run before the predictive early-return below.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const pending = useFilterPending();
 
-  const hasResults = Boolean(term && result?.total);
+  if (data.type === 'predictive') return null;
+
+  const {term, result, error} = data;
+  const search = result?.search ?? null;
+  const facets = (search?.productFilters ?? []) as Facet[];
+  const total = result?.total ?? 0;
 
   return (
     <div className="bg-paper">
-      {/* Search header band */}
-      <section className="bg-mint">
-        <div className="ui-container py-12 md:py-16">
+      <div className="ui-container py-8 md:py-10">
+        {/* Compact heading — inside the filter page, not a full-width band */}
+        <div className="mb-8">
           <span className="eyebrow text-brand-700">Search</span>
-          <h1 className="mt-3 text-4xl font-extrabold uppercase tracking-tight md:text-6xl">
+          <h1 className="mt-2 text-3xl font-extrabold uppercase tracking-tight md:text-4xl">
             {term ? <>Results for “{term}”</> : 'Search'}
           </h1>
-
           {term && (
-            <p className="mt-4 text-sm text-muted">
-              {result?.total ?? 0}{' '}
-              {result?.total === 1 ? 'result' : 'results'} for “{term}”
+            <p className="mt-2 text-sm text-muted">
+              {total} {total === 1 ? 'style' : 'styles'} for “{term}”
             </p>
           )}
         </div>
-      </section>
 
-      <section className="ui-container py-12 md:py-16">
         {error && <p className="mb-6 text-sm text-red-600">{error}</p>}
-        {!hasResults ? (
-          <SearchResults.Empty />
+
+        {!term ? (
+          <p className="py-10 text-muted">Type a search term to see results.</p>
         ) : (
-          <SearchResults result={result} term={term}>
-            {({articles, pages, products, term}) => (
-              <div className="flex flex-col gap-14">
-                <SearchResults.Products products={products} term={term} />
-                <SearchResults.Pages pages={pages} term={term} />
-                <SearchResults.Articles articles={articles} term={term} />
+          <div className="flex flex-col gap-8 lg:flex-row">
+          {/* Desktop sidebar */}
+          <div className="hidden lg:block lg:w-60 lg:shrink-0">
+            <div className="sticky top-28 flex max-h-[calc(100vh-8rem)] flex-col">
+              <p className="mb-5 shrink-0 text-sm font-bold uppercase tracking-wide text-ink">
+                Filters
+              </p>
+              <div className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto pr-4 pb-4">
+                <CollectionFilters facets={facets} />
               </div>
-            )}
-          </SearchResults>
+            </div>
+          </div>
+
+          {/* Results */}
+          <div id="collection-results" className="min-w-0 flex-1 scroll-mt-32">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(true)}
+                className="btn btn-outline !px-4 !py-2 text-sm lg:hidden"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4">
+                  <path
+                    d="M4 6h16M7 12h10M10 18h4"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                Filters
+              </button>
+              <div className="ml-auto">
+                <SortMenu />
+              </div>
+            </div>
+
+            <div className="mb-5">
+              <ActiveFilterChips facets={facets} />
+            </div>
+
+            <GridPending pending={pending}>
+              {search && search.nodes.length ? (
+                <Pagination connection={search}>
+                  {({nodes, isLoading, PreviousLink, NextLink}) => (
+                    <div>
+                      <div className="mb-6 flex justify-center empty:mb-0">
+                        <PreviousLink className="btn btn-outline !py-2 text-sm">
+                          {isLoading ? 'Loading…' : '↑ Load previous'}
+                        </PreviousLink>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3">
+                        {nodes.map((node, i) => (
+                          <ProductItem
+                            key={(node as {id: string}).id}
+                            product={node as unknown as ProductItemFragment}
+                            loading={i < 6 ? 'eager' : 'lazy'}
+                          />
+                        ))}
+                      </div>
+                      <div className="mt-8 flex flex-col items-center gap-3 border-t border-black/10 pt-6">
+                        <p className="text-sm text-muted">
+                          Showing {nodes.length}{' '}
+                          {nodes.length === 1 ? 'product' : 'products'}
+                        </p>
+                        <NextLink className="btn btn-dark !py-2.5 text-sm">
+                          {isLoading ? 'Loading…' : 'Load more'}
+                        </NextLink>
+                      </div>
+                    </div>
+                  )}
+                </Pagination>
+              ) : (
+                <div className="rounded-3xl bg-mint px-6 py-16 text-center">
+                  <p className="text-lg font-bold text-ink">
+                    No results for “{term}”
+                  </p>
+                  <p className="mt-1 text-sm text-muted">
+                    Try a different term, or remove a filter.
+                  </p>
+                </div>
+              )}
+            </GridPending>
+          </div>
+        </div>
         )}
-      </section>
+      </div>
+
+      {/* Mobile filter drawer */}
+      {filtersOpen && (
+        <div className="fixed inset-0 z-[100] lg:hidden">
+          <button
+            aria-label="Close filters"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setFiltersOpen(false)}
+          />
+          <div className="absolute inset-y-0 left-0 flex w-[85vw] max-w-sm flex-col bg-paper shadow-2xl">
+            <div className="flex items-center justify-between border-b border-black/10 px-5 py-4">
+              <p className="text-lg font-extrabold uppercase tracking-tight">
+                Filters
+              </p>
+              <button
+                onClick={() => setFiltersOpen(false)}
+                aria-label="Close"
+                className="grid h-9 w-9 place-items-center rounded-full hover:bg-mint"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5">
+                  <path
+                    d="M6 6l12 12M18 6L6 18"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-5">
+              <CollectionFilters facets={facets} />
+            </div>
+            <div className="border-t border-black/10 p-4">
+              <button
+                onClick={() => setFiltersOpen(false)}
+                className="btn btn-dark w-full"
+              >
+                View results
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Analytics.SearchView data={{searchTerm: term, searchResults: result}} />
     </div>
@@ -93,77 +225,49 @@ export default function SearchPage() {
  * Regular search query and fragments
  * (adjust as needed)
  */
-const SEARCH_PRODUCT_FRAGMENT = `#graphql
-  fragment SearchProduct on Product {
-    __typename
-    handle
+const SEARCH_GRID_PRODUCT_FRAGMENT = `#graphql
+  fragment SearchGridProduct on Product {
     id
-    publishedAt
+    handle
     title
-    trackingParameters
     vendor
-    selectedOrFirstAvailableVariant(
-      selectedOptions: []
-      ignoreUnknownOptions: true
-      caseInsensitiveMatch: true
-    ) {
+    featuredImage {
       id
-      image {
-        url
-        altText
-        width
-        height
-      }
-      price {
+      altText
+      url
+      width
+      height
+    }
+    priceRange {
+      minVariantPrice {
         amount
         currencyCode
       }
-      compareAtPrice {
+      maxVariantPrice {
         amount
         currencyCode
       }
-      selectedOptions {
-        name
-        value
-      }
-      product {
-        handle
-        title
+    }
+    selectedOrFirstAvailableVariant {
+      id
+      availableForSale
+    }
+    seller: metafield(namespace: "custom", key: "seller") {
+      reference {
+        ... on Metaobject {
+          handle
+          slug: field(key: "slug") {
+            value
+          }
+        }
       }
     }
   }
 ` as const;
 
-const SEARCH_PAGE_FRAGMENT = `#graphql
-  fragment SearchPage on Page {
-     __typename
-     handle
-    id
-    title
-    trackingParameters
-  }
-` as const;
-
-const SEARCH_ARTICLE_FRAGMENT = `#graphql
-  fragment SearchArticle on Article {
-    __typename
-    handle
-    id
-    title
-    trackingParameters
-  }
-` as const;
-
-const PAGE_INFO_FRAGMENT = `#graphql
-  fragment PageInfoFragment on PageInfo {
-    hasNextPage
-    hasPreviousPage
-    startCursor
-    endCursor
-  }
-` as const;
-
-// NOTE: https://shopify.dev/docs/api/storefront/latest/queries/search
+// Product-only, faceted search — mirrors the collection PLP so /search reuses
+// the same filter sidebar, sort, chips, and product grid.
+// https://shopify.dev/docs/api/storefront/latest/queries/search
 export const SEARCH_QUERY = `#graphql
   query RegularSearch(
     $country: CountryCode
@@ -173,53 +277,48 @@ export const SEARCH_QUERY = `#graphql
     $last: Int
     $term: String!
     $startCursor: String
+    $productFilters: [ProductFilter!]
+    $sortKey: SearchSortKeys
+    $reverse: Boolean
   ) @inContext(country: $country, language: $language) {
-    articles: search(
+    search(
       query: $term,
-      types: [ARTICLE],
-      first: $first,
-    ) {
-      nodes {
-        ...on Article {
-          ...SearchArticle
-        }
-      }
-    }
-    pages: search(
-      query: $term,
-      types: [PAGE],
-      first: $first,
-    ) {
-      nodes {
-        ...on Page {
-          ...SearchPage
-        }
-      }
-    }
-    products: search(
-      after: $endCursor,
-      before: $startCursor,
+      types: [PRODUCT],
       first: $first,
       last: $last,
-      query: $term,
-      sortKey: RELEVANCE,
-      types: [PRODUCT],
+      before: $startCursor,
+      after: $endCursor,
+      productFilters: $productFilters,
+      sortKey: $sortKey,
+      reverse: $reverse,
       unavailableProducts: HIDE,
     ) {
+      totalCount
       nodes {
         ...on Product {
-          ...SearchProduct
+          ...SearchGridProduct
         }
       }
       pageInfo {
-        ...PageInfoFragment
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
+      }
+      productFilters {
+        id
+        label
+        type
+        values {
+          id
+          label
+          count
+          input
+        }
       }
     }
   }
-  ${SEARCH_PRODUCT_FRAGMENT}
-  ${SEARCH_PAGE_FRAGMENT}
-  ${SEARCH_ARTICLE_FRAGMENT}
-  ${PAGE_INFO_FRAGMENT}
+  ${SEARCH_GRID_PRODUCT_FRAGMENT}
 ` as const;
 
 /**
@@ -234,32 +333,67 @@ async function regularSearch({
 >): Promise<RegularSearchReturn> {
   const {storefront} = context;
   const url = new URL(request.url);
-  const variables = getPaginationVariables(request, {pageBy: 8});
   const term = String(url.searchParams.get('q') || '');
+  const paginationVariables = getPaginationVariables(request, {pageBy: 12});
 
-  // Search articles, pages, and products for the `q` term
-  const {
-    errors,
-    ...items
-  }: {errors?: Array<{message: string}>} & RegularSearchQuery =
-    await storefront.query(SEARCH_QUERY, {
-      variables: {...variables, term},
-    });
-
-  if (!items) {
-    throw new Error('No search data returned from Shopify API');
+  if (!term) {
+    return {type: 'regular', term: '', result: {total: 0, search: null}};
   }
 
-  const total = Object.values(items).reduce(
-    (acc: number, {nodes}: {nodes: Array<unknown>}) => acc + nodes.length,
-    0,
-  );
+  // Faceted product filters from the URL — same scheme as the collection pages.
+  const productFilters: Array<Record<string, unknown>> = [];
+  for (const f of url.searchParams.getAll('filter')) {
+    try {
+      productFilters.push(JSON.parse(f) as Record<string, unknown>);
+    } catch {
+      // ignore malformed filter params
+    }
+  }
+  const minPrice = url.searchParams.get('minPrice');
+  const maxPrice = url.searchParams.get('maxPrice');
+  if (minPrice || maxPrice) {
+    productFilters.push({
+      price: {
+        min: minPrice ? Number(minPrice) : 0,
+        ...(maxPrice ? {max: Number(maxPrice)} : {}),
+      },
+    });
+  }
+
+  const sort = url.searchParams.get('sort') || '';
+  let sortKey: 'RELEVANCE' | 'PRICE' = 'RELEVANCE';
+  let reverse = false;
+  if (sort === 'price-asc') {
+    sortKey = 'PRICE';
+  } else if (sort === 'price-desc') {
+    sortKey = 'PRICE';
+    reverse = true;
+  }
+
+  const {
+    errors,
+    search,
+  }: {errors?: Array<{message: string}>} & RegularSearchQuery =
+    await storefront.query(SEARCH_QUERY, {
+      variables: {
+        ...paginationVariables,
+        term,
+        productFilters,
+        sortKey,
+        reverse,
+      },
+    });
 
   const error = errors
-    ? errors.map(({message}: {message: string}) => message).join(', ')
+    ? errors.map(({message}) => message).join(', ')
     : undefined;
 
-  return {type: 'regular', term, error, result: {total, items}};
+  return {
+    type: 'regular',
+    term,
+    error,
+    result: {total: search?.totalCount ?? 0, search},
+  };
 }
 
 /**

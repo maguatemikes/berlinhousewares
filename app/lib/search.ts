@@ -10,10 +10,15 @@ type ResultWithItems<Type extends 'predictive' | 'regular', Items> = {
   result: {total: number; items: Items};
 };
 
-export type RegularSearchReturn = ResultWithItems<
-  'regular',
-  RegularSearchQuery
->;
+/** Product-only, faceted regular search — holds the `search` connection
+ *  (nodes + pageInfo + productFilters) so /search can render the collection
+ *  filter/grid UI. `search` is null when there's no query term. */
+export type RegularSearchReturn = {
+  type: 'regular';
+  term: string;
+  error?: string;
+  result: {total: number; search: RegularSearchQuery['search'] | null};
+};
 export type PredictiveSearchReturn = ResultWithItems<
   'predictive',
   NonNullable<PredictiveSearchQuery['predictiveSearch']>
