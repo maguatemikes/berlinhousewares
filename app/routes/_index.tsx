@@ -7,14 +7,14 @@ import {ProductItem} from '~/components/ProductItem';
 import {siteOrigin} from '~/lib/seo';
 
 // Hero photo on the Shopify CDN (1672×941). Rendered responsively via Hydrogen
-// <Image> below, and reused as the homepage social-share image (og:image).
-const HERO_IMAGE =
-  'https://cdn.shopify.com/s/files/1/0716/2609/6792/files/hero.png';
+// Homepage social-share image (og:image / twitter:image) — the homeware hero,
+// so shared links preview with furniture, not the old streetwear photo.
+const HERO_IMAGE = 'https://berlinhousewares.com/hero-bg.webp';
 
 export const meta: Route.MetaFunction = ({matches}) => {
-  const title = 'Berlin Houseware — New & Pre-Loved Homeware';
+  const title = 'Berlin Houseware — New & Pre-Loved Marketplace';
   const description =
-    'Shop new and verified pre-loved homeware at Berlin Houseware — a curated marketplace for kitchen, dining, décor, and lighting. Buy, sell, and consign quality pieces.';
+    'Buy, sell & consign new and verified pre-loved goods at Berlin Houseware — a trusted marketplace spanning home, electronics, apparel, sporting goods and more. Every secondhand piece is hand-inspected before listing.';
   const origin = siteOrigin(matches);
   const url = `${origin}/`;
   return [
@@ -34,7 +34,7 @@ export const meta: Route.MetaFunction = ({matches}) => {
     {
       'script:ld+json': {
         '@context': 'https://schema.org',
-        '@type': 'Organization',
+        '@type': 'OnlineStore',
         name: 'Berlin Houseware',
         url,
         description,
@@ -217,13 +217,16 @@ function Hero() {
             New &amp;
             <br />
             Pre‑Loved
+            <br />
+            <span className="text-brand-400">Marketplace</span>
           </h1>
           <p className="mt-4 text-lg font-semibold text-brand-300 md:text-xl">
             Buy, sell &amp; consign — one marketplace.
           </p>
           <p className="mt-6 max-w-lg text-base leading-relaxed text-white/75 md:text-lg">
             Two ways to shop, one marketplace you can trust. Browse brand-new
-            drops right next to verified pre-loved finds — every secondhand
+            drops right next to verified pre-loved finds across home,
+            electronics, apparel, sporting goods and more — every secondhand
             piece is hand-inspected and authenticated before it&apos;s listed.
             Got pieces of your own? Consign them in minutes: we handle the
             photos, listing, and shipping, and you keep up to 80% when they
@@ -825,62 +828,173 @@ function ProductGridSkeleton() {
 /* -------------------------------------------------------------------------- */
 /* Consignment band                                                            */
 /* -------------------------------------------------------------------------- */
+type HiwStat = {big: string; label: string};
+type HiwStep = {n: string; t: string; d: string};
+type HiwPanel = {
+  id: 'consign' | 'new';
+  tab: string;
+  eyebrow: string;
+  titleTop: string;
+  titleAccent: string;
+  body: string;
+  stats: [HiwStat, HiwStat];
+  cta: {label: string; to: string};
+  steps: HiwStep[];
+};
+
+// Two sides of the marketplace, one tabbed section: consign (sell) + shop new
+// (buy). Both panels render in the DOM (crawlable, instant switch); only the
+// active one is shown. Stats mirror the site's real policies (payout, free
+// shipping over $75, 30-day returns) — no invented promises.
+const HIW_PANELS: HiwPanel[] = [
+  {
+    id: 'consign',
+    tab: 'Consign',
+    eyebrow: 'Consignment',
+    titleTop: 'Your clutter is',
+    titleAccent: "someone's find.",
+    body: 'Sell the things you no longer use — across every category. We handle the photos, pricing, listing, and shipping, and you keep up to 80%.',
+    stats: [
+      {big: 'up to 80%', label: 'You keep'},
+      {big: 'zero', label: 'Hassle — we do it all'},
+    ],
+    cta: {label: 'Start selling', to: '/consign'},
+    steps: [
+      {n: '01', t: 'Snap it', d: 'Send a few photos of the items you no longer use.'},
+      {n: '02', t: 'We sell it', d: 'We inspect, price, list, and ship it for you.'},
+      {n: '03', t: 'You get paid', d: 'Earn up to 80% — cash out or store credit.'},
+    ],
+  },
+  {
+    id: 'new',
+    tab: 'Shop New',
+    eyebrow: 'New arrivals',
+    titleTop: 'Brand-new finds,',
+    titleAccent: 'delivered.',
+    body: 'Shop brand-new items across every category — fresh arrivals added all the time, with simple, secure checkout and shipping to your door.',
+    stats: [
+      {big: 'free', label: 'Shipping over $75'},
+      {big: '30-day', label: 'Easy returns'},
+    ],
+    cta: {label: 'Shop new', to: '/collections/all'},
+    steps: [
+      {n: '01', t: 'Browse', d: 'Explore new drops across every category.'},
+      {n: '02', t: 'Order', d: 'Secure checkout — buy with confidence.'},
+      {n: '03', t: 'Delivered', d: 'Fast, reliable shipping to your door.'},
+    ],
+  },
+];
+
 function ConsignBand() {
-  const steps = [
-    {
-      n: '01',
-      t: 'Snap it',
-      d: 'Send a few photos of the homeware you no longer use.',
-    },
-    {
-      n: '02',
-      t: 'We sell it',
-      d: 'We inspect, price, list, and ship it for you.',
-    },
-    {
-      n: '03',
-      t: 'You get paid',
-      d: 'Earn up to 80% — cash out or store credit.',
-    },
-  ];
+  const [active, setActive] = useState<HiwPanel['id']>('consign');
   return (
-    <Section className="bg-paper">
-      <div className="overflow-hidden rounded-3xl bg-ink text-white">
-        <div className="grid gap-10 p-8 md:grid-cols-2 md:p-14">
-          <div>
-            <span className="eyebrow text-brand-400">Consignment</span>
-            <h2 className="mt-3 text-4xl font-extrabold uppercase leading-tight tracking-tight md:text-5xl">
-              Your clutter is
-              <br />
-              <span className="text-brand-400">someone&apos;s find.</span>
-            </h2>
-            <p className="mt-4 max-w-md text-white/70">
-              Sell the homeware you no longer use. We handle the photos,
-              pricing, listing, and shipping — you keep up to 80%.
-            </p>
-            <Link to="/consign" className="mt-8 inline-flex btn btn-brand">
-              Start selling
-            </Link>
-          </div>
-          <div className="grid gap-4 self-center">
-            {steps.map((s) => (
-              <div
-                key={s.n}
-                className="flex items-start gap-4 rounded-2xl bg-white/5 p-5 ring-1 ring-white/10"
-              >
-                <span className="text-2xl font-extrabold text-brand-400">
-                  {s.n}
-                </span>
-                <div>
-                  <p className="text-lg font-bold">{s.t}</p>
-                  <p className="text-sm text-white/60">{s.d}</p>
-                </div>
-              </div>
-            ))}
+    <Section className="bg-mint">
+      <div className="overflow-hidden rounded-3xl border border-black/5 bg-paper shadow-[0_26px_60px_-30px_rgba(16,20,16,0.28)]">
+        {/* Tab header — inside the card */}
+        <div className="border-b border-black/5 p-4 md:px-8 md:py-5">
+          <div
+            role="tablist"
+            aria-label="Buy or sell on Berlin Houseware"
+            className="inline-flex rounded-2xl bg-mint p-1"
+          >
+            {HIW_PANELS.map((p) => {
+              const selected = active === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  role="tab"
+                  id={`hiw-tab-${p.id}`}
+                  aria-selected={selected}
+                  aria-controls={`hiw-panel-${p.id}`}
+                  onClick={() => setActive(p.id)}
+                  className={`rounded-xl px-6 py-2 text-sm font-semibold transition-colors ${
+                    selected ? 'bg-ink text-white' : 'text-muted hover:text-ink'
+                  }`}
+                >
+                  {p.tab}
+                </button>
+              );
+            })}
           </div>
         </div>
+
+        {/* Panels (both in the DOM; inactive is hidden) */}
+        {HIW_PANELS.map((p) => (
+          <HowItWorksPanel key={p.id} panel={p} hidden={active !== p.id} />
+        ))}
       </div>
     </Section>
+  );
+}
+
+function HowItWorksPanel({panel, hidden}: {panel: HiwPanel; hidden: boolean}) {
+  return (
+    <div
+      role="tabpanel"
+      id={`hiw-panel-${panel.id}`}
+      aria-labelledby={`hiw-tab-${panel.id}`}
+      hidden={hidden}
+    >
+      <div className="grid md:grid-cols-2">
+        {/* Pitch */}
+        <div className="p-8 md:p-14">
+          <span className="eyebrow text-brand-700">{panel.eyebrow}</span>
+          <h2 className="mt-3 text-4xl font-extrabold uppercase leading-[1.05] tracking-tight text-ink md:text-5xl">
+            {panel.titleTop}
+            <br />
+            <span className="text-brand-700">{panel.titleAccent}</span>
+          </h2>
+          <p className="mt-5 max-w-md leading-relaxed text-muted">{panel.body}</p>
+
+          {/* Stat row — real policies, no invented promises */}
+          <dl className="mt-8 flex gap-8">
+            {panel.stats.map((s, i) => (
+              <div key={s.label} className={i > 0 ? 'border-l border-black/10 pl-8' : ''}>
+                <dt className="sr-only">{s.label}</dt>
+                <dd className="text-3xl font-extrabold tracking-tight text-ink">
+                  {s.big}
+                </dd>
+                <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted">
+                  {s.label}
+                </p>
+              </div>
+            ))}
+          </dl>
+
+          <div className="mt-9">
+            <Link to={panel.cta.to} className="btn btn-dark">
+              {panel.cta.label}
+            </Link>
+          </div>
+        </div>
+
+        {/* Process timeline */}
+        <div className="border-t border-black/5 p-8 md:border-l md:border-t-0 md:p-14">
+          <span className="eyebrow text-brand-700">How it works</span>
+          <ol className="relative mt-7 space-y-8">
+            {/* Connecting rail behind the step badges. */}
+            <span
+              aria-hidden="true"
+              className="absolute left-[1.375rem] top-5 bottom-5 w-px bg-brand-300"
+            />
+            {panel.steps.map((s) => (
+              <li key={s.n} className="relative flex items-start gap-5">
+                <span className="relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-700 text-sm font-extrabold text-white ring-4 ring-paper">
+                  {s.n}
+                </span>
+                <div className="pt-1.5">
+                  <p className="text-lg font-bold text-ink">{s.t}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">
+                    {s.d}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </div>
   );
 }
 

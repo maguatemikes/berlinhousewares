@@ -27,8 +27,7 @@ export function siteOrigin(matches: ReadonlyArray<unknown>): string {
  * twitter:image on any page that doesn't supply its own, so links previewed on
  * Facebook, X, iMessage, Slack, etc. always show a branded image.
  */
-export const SITE_SHARE_IMAGE =
-  'https://cdn.shopify.com/s/files/1/0716/2609/6792/files/hero.png';
+export const SITE_SHARE_IMAGE = 'https://berlinhousewares.com/hero-bg.webp';
 
 /**
  * Open Graph + Twitter-card meta descriptors for a page. Spread into a route's

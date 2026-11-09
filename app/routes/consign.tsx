@@ -16,16 +16,16 @@ const PORTAL_REGISTER_URL =
  *  as FAQPage structured data (JSON-LD) for SEO rich results. */
 const FAQS = [
   {
-    q: 'Does Berlin Houseware sell new homeware too?',
-    a: 'Yes. Berlin Houseware is a curated marketplace for both new and verified pre-loved homeware, listed side by side. When you consign, your pieces appear right alongside our new collection — reaching buyers already shopping the store, not tucked away in a separate secondhand section.',
+    q: 'Does Berlin Houseware sell new items too?',
+    a: 'Yes. Berlin Houseware is a curated marketplace for both new and verified pre-loved goods across every category — home, electronics, apparel, sporting goods and more — listed side by side. When you consign, your items appear right alongside our new collection, reaching buyers already shopping the store, not tucked away in a separate secondhand section.',
   },
   {
-    q: 'What homeware can I consign?',
-    a: 'We accept quality homeware in good, working condition — kitchen and dining, décor, lighting, glassware, ceramics, textiles, small furniture, and home accessories. Designer, vintage, and gently used everyday pieces are all welcome. Every submission is inspected and authenticated before it goes live next to our new arrivals.',
+    q: 'What can I consign?',
+    a: 'We accept quality items in good, working condition across every category — home and décor, electronics, apparel and accessories, sporting goods, and more. Designer, vintage, and gently used everyday pieces are all welcome. Every submission is inspected and authenticated before it goes live next to our new arrivals.',
   },
   {
     q: 'Can I consign brand-new or unused items?',
-    a: 'Absolutely. Many of our consignors sell new, unused, or open-box homeware — duplicate gifts, wrong-size pieces, or overstock. New and pre-loved list together, so there’s no separate process; just note the condition when you submit an item in the seller portal.',
+    a: 'Absolutely. Many of our consignors sell new, unused, or open-box items — duplicate gifts, wrong-size pieces, or overstock. New and pre-loved list together, so there’s no separate process; just note the condition when you submit an item in the seller portal.',
   },
   {
     q: 'How is my item priced?',
@@ -37,7 +37,7 @@ const FAQS = [
   },
   {
     q: 'How long does it take to sell?',
-    a: 'Most in-demand homeware sells within the first few weeks, though timing depends on category, price, and season. You can follow views and offers on every listing live in your seller dashboard, and we actively market standout pieces to the right buyers.',
+    a: 'Most in-demand items sell within the first few weeks, though timing depends on category, price, and season. You can follow views and offers on every listing live in your seller dashboard, and we actively market standout pieces to the right buyers.',
   },
   {
     q: 'When and how do I get paid?',
@@ -50,6 +50,31 @@ const FAQS = [
   {
     q: 'How do I get started as a consignor?',
     a: 'Create a free seller account in the consignor portal, add a few photos and details, and send your items in or drop them off. Our team reviews every submission within 48 hours — then we handle photography, pricing, listing, and shipping from there.',
+  },
+];
+
+/** The 4-step consignment process — single source of truth for the on-page
+ *  timeline AND the HowTo structured data (JSON-LD) emitted in `meta`. */
+const HOW_STEPS = [
+  {
+    n: '01',
+    t: 'Snap & send',
+    d: 'Create your seller account, add a few photos and details — or drop it off. That’s your part.',
+  },
+  {
+    n: '02',
+    t: 'We price & list',
+    d: 'We inspect, photograph, price it fairly, and put it in front of the right buyers.',
+  },
+  {
+    n: '03',
+    t: 'It sells',
+    d: 'Follow every sale live in your seller dashboard — no guesswork.',
+  },
+  {
+    n: '04',
+    t: 'Get paid',
+    d: 'Cash out or take store credit — paid fast, up to 80% of the sale.',
   },
 ];
 
@@ -123,18 +148,45 @@ const WHY_US = [
 ];
 
 export const meta: Route.MetaFunction = ({matches}) => {
-  const title = 'Sell & Consign Homeware | Berlin Houseware — New & Pre-Loved';
+  const title = 'Sell & Consign Online | Berlin Houseware — New & Pre-Loved';
   const description =
-    'Consign with Berlin Houseware, the curated marketplace for new and verified pre-loved homeware. We photograph, price, list, and ship your items to buyers shopping our new collection — earn up to 80% when they sell, with no listing fees.';
+    'Consign with Berlin Houseware, the curated marketplace for new and verified pre-loved goods across every category. We photograph, price, list, and ship your items to buyers already shopping the store — earn up to 80% when they sell, with no listing fees.';
+  const origin = siteOrigin(matches);
+  const url = `${origin}/consign`;
   return [
     {title},
     {name: 'description', content: description},
     {
       name: 'keywords',
       content:
-        'consign homeware, sell homeware online, homeware consignment, new and pre-loved homeware, pre-loved home décor, sell furniture, home consignment store, Berlin Houseware',
+        'sell online, online consignment, consignment store, sell my furniture, sell your stuff, how consignment works, new and pre-loved, Berlin Houseware',
     },
-    ...socialMeta({title, description, url: `${siteOrigin(matches)}/consign`}),
+    ...socialMeta({title, description, url}),
+    {
+      'script:ld+json': {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {'@type': 'ListItem', position: 1, name: 'Home', item: `${origin}/`},
+          {'@type': 'ListItem', position: 2, name: 'Sell', item: url},
+        ],
+      },
+    },
+    {
+      'script:ld+json': {
+        '@context': 'https://schema.org',
+        '@type': 'HowTo',
+        name: 'How consignment works at Berlin Houseware',
+        description:
+          'Sell your new or pre-loved items on Berlin Houseware in four steps — we handle photos, pricing, listing, and shipping.',
+        step: HOW_STEPS.map((s, i) => ({
+          '@type': 'HowToStep',
+          position: i + 1,
+          name: s.t,
+          text: s.d,
+        })),
+      },
+    },
     {
       'script:ld+json': {
         '@context': 'https://schema.org',
@@ -155,11 +207,11 @@ export default function Consign() {
       <ConsignHero />
       <WhySellWithUs />
       <HowItWorks />
-      <Locations />
       <PayoutTiers />
+      <Locations />
 
       {/* Consignor portal CTA */}
-      <section id="submit" className="bg-mint">
+      <section id="submit" className="bg-paper">
         <div className="ui-container grid gap-10 py-16 md:py-24 lg:grid-cols-[1fr_1fr]">
           <div>
             <span className="eyebrow text-brand-700">Start selling</span>
@@ -216,14 +268,14 @@ function ConsignHero() {
             New &amp; pre-loved · Consignment
           </span>
           <h1 className="mt-3 text-4xl font-extrabold uppercase leading-[0.95] tracking-tight text-ink md:text-5xl">
-            Sell your homeware where{' '}
+            Sell your stuff where{' '}
             <span className="text-brand-700">buyers already shop.</span>
           </h1>
           <p className="mt-5 max-w-md text-base text-ink/70 md:text-lg">
             Berlin Houseware is the curated marketplace for new and verified
-            pre-loved homeware — listed side by side. Send the pieces you no
-            longer use; we photograph, price, list, and ship. You just get paid —
-            up to 80% when it sells.
+            pre-loved goods across every category — listed side by side. Send the
+            things you no longer use; we photograph, price, list, and ship. You
+            just get paid — up to 80% when it sells.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href="#submit" className="btn btn-dark">
@@ -236,7 +288,7 @@ function ConsignHero() {
         <div className="lg:justify-self-end">
           <img
             src="/consign-hero.jpg"
-            alt="A consignor photographing pre-loved clothing and homeware to list on Berlin Houseware"
+            alt="A consignor photographing pre-loved items to list for sale on Berlin Houseware"
             loading="eager"
             decoding="async"
             className="aspect-[3/2] w-full rounded-3xl object-cover shadow-sm ring-1 ring-black/5"
@@ -248,49 +300,40 @@ function ConsignHero() {
 }
 
 function HowItWorks() {
-  const steps = [
-    {
-      n: '01',
-      t: 'Snap & send',
-      d: 'Create your seller account, add a few photos and details — or drop it off. That’s your part.',
-    },
-    {
-      n: '02',
-      t: 'We price & list',
-      d: 'We inspect, photograph, price it fairly, and put it in front of the right buyers.',
-    },
-    {
-      n: '03',
-      t: 'It sells',
-      d: 'Follow every sale live in your seller dashboard — no guesswork.',
-    },
-    {
-      n: '04',
-      t: 'Get paid',
-      d: 'Cash out or take store credit — paid fast, up to 80% of the sale.',
-    },
-  ];
   return (
-    <section id="how" className="ui-container py-16">
-      <div className="mb-10 max-w-2xl">
-        <span className="eyebrow text-brand-700">The process</span>
-        <h2 className="mt-3 text-4xl font-extrabold uppercase tracking-tight md:text-5xl">
-          How consignment works
-        </h2>
-      </div>
-      <div className="grid gap-4 md:grid-cols-4">
-        {steps.map((s) => (
-          <div
-            key={s.n}
-            className="rounded-3xl bg-mint p-6 transition-colors hover:bg-mint-deep"
-          >
-            <span className="text-3xl font-extrabold text-brand-600">
-              {s.n}
-            </span>
-            <h3 className="mt-3 text-xl font-bold uppercase">{s.t}</h3>
-            <p className="mt-2 text-sm text-muted">{s.d}</p>
-          </div>
-        ))}
+    <section id="how" className="bg-mint">
+      <div className="ui-container py-16 md:py-24">
+        <div className="mb-12 max-w-2xl">
+          <span className="eyebrow text-brand-700">The process</span>
+          <h2 className="mt-3 text-4xl font-extrabold uppercase tracking-tight md:text-5xl">
+            How consignment works
+          </h2>
+          <p className="mt-4 max-w-xl text-muted">
+            Four simple steps from clutter to cash — we handle the hard parts,
+            you just send and get paid.
+          </p>
+        </div>
+
+        {/* Numbered timeline — same badge + rail language as the homepage, for
+            a consistent process visual across the site (repetition = cohesion). */}
+        <ol className="relative grid gap-y-10 sm:grid-cols-2 md:grid-cols-4 md:gap-8">
+          {/* Horizontal rail behind the badges (desktop only). */}
+          <span
+            aria-hidden="true"
+            className="absolute left-[1.375rem] right-[1.375rem] top-[1.375rem] hidden h-px bg-brand-300 md:block"
+          />
+          {HOW_STEPS.map((s) => (
+            <li key={s.n} className="relative">
+              <span className="relative z-10 grid h-11 w-11 place-items-center rounded-full bg-brand-700 text-sm font-extrabold text-white ring-4 ring-mint">
+                {s.n}
+              </span>
+              <h3 className="mt-5 text-lg font-bold uppercase tracking-tight text-ink">
+                {s.t}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{s.d}</p>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
   );
@@ -298,7 +341,7 @@ function HowItWorks() {
 
 function WhySellWithUs() {
   return (
-    <section className="bg-mint">
+    <section className="bg-paper">
       <div className="ui-container py-16 md:py-24">
         <div className="mb-12 max-w-2xl">
           <span className="eyebrow text-brand-700">Why sell with us</span>
@@ -344,9 +387,9 @@ function Locations() {
             Real spaces, real foot traffic
           </h2>
           <p className="mt-4 text-muted">
-            Your consigned homeware doesn’t just sit in a listing — it reaches
-            buyers browsing our store in person. Prefer to hand items over rather
-            than ship? Drop them off at the location on the right.
+            Your consigned items don’t just sit in a listing — they reach buyers
+            browsing our store in person. Prefer to hand items over rather than
+            ship? Drop them off at the location on the right.
           </p>
           <p className="mt-6 text-sm text-muted">
             Not nearby?{' '}
@@ -457,17 +500,19 @@ function PayoutTiers() {
     {price: 'Over $150', payout: '80%'},
   ];
   return (
-    <section className="ui-container py-12 md:py-16">
-      <div className="grid gap-4 rounded-3xl bg-brand-700 p-8 text-white md:grid-cols-3 md:p-10">
-        {tiers.map((t) => (
-          <div key={t.price} className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-wide">
-              {t.price}
-            </p>
-            <p className="mt-1 text-5xl font-extrabold">{t.payout}</p>
-            <p className="text-sm">your payout</p>
-          </div>
-        ))}
+    <section className="bg-paper">
+      <div className="ui-container py-12 md:py-16">
+        <div className="grid gap-4 rounded-3xl bg-brand-700 p-8 text-white md:grid-cols-3 md:p-10">
+          {tiers.map((t) => (
+            <div key={t.price} className="text-center">
+              <p className="text-sm font-semibold uppercase tracking-wide">
+                {t.price}
+              </p>
+              <p className="mt-1 text-5xl font-extrabold">{t.payout}</p>
+              <p className="text-sm">your payout</p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -475,7 +520,7 @@ function PayoutTiers() {
 
 function Faq() {
   return (
-    <section className="bg-paper">
+    <section className="bg-mint">
       <div className="ui-container grid gap-10 py-16 md:py-24 lg:grid-cols-[0.85fr_1.65fr] lg:gap-16">
         {/* Left rail — heading + intro, balances the accordion column */}
         <div className="lg:sticky lg:top-28 lg:self-start">
@@ -484,11 +529,10 @@ function Faq() {
             Seller FAQ
           </h2>
           <p className="mt-4 max-w-sm text-muted">
-            Everything you need to know about consigning your homeware with
-            Berlin Houseware — what we accept, how pricing and payouts work,
-            timelines, and what happens to items that don’t sell. Your pieces
-            list side by side with our new collection, so they reach buyers from
-            day one.
+            Everything you need to know about consigning your items with Berlin
+            Houseware — what we accept, how pricing and payouts work, timelines,
+            and what happens to items that don’t sell. Your items list side by
+            side with our new collection, so they reach buyers from day one.
           </p>
           <a href="#submit" className="btn btn-dark mt-6 !py-2 text-sm">
             Create a seller account
@@ -529,7 +573,7 @@ function Faq() {
 
 function PortalCard() {
   return (
-    <div className="flex flex-col justify-center rounded-3xl bg-paper p-8 text-center shadow-sm ring-1 ring-black/5 md:p-10">
+    <div className="flex flex-col justify-center rounded-3xl bg-mint p-8 text-center shadow-sm ring-1 ring-black/5 md:p-10">
       <span className="eyebrow text-brand-700">Consignor portal</span>
       <h3 className="mt-3 text-2xl font-extrabold uppercase tracking-tight">
         Register to consign

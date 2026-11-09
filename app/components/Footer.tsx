@@ -21,7 +21,7 @@ const COLUMNS = [
   {
     title: 'Consignment',
     links: [
-      {label: 'Sell your homeware', to: '/consign'},
+      {label: 'Sell your items', to: '/consign'},
       {label: 'How it works', to: '/consign'},
       {label: 'Payouts', to: '/consign'},
       {label: 'Seller FAQ', to: '/consign'},
@@ -53,8 +53,8 @@ export function Footer({
               berlin<span className="text-brand-400">houseware</span>
             </span>
             <p className="mt-4 max-w-xs text-sm text-white/60">
-              New homeware and verified pre-loved finds. Live beautifully, waste
-              less — and give great pieces a second life.
+              New and verified pre-loved finds across every category. Live
+              beautifully, waste less — and give great pieces a second life.
             </p>
             <div className="mt-6 flex gap-3">
               {SOCIALS.map((s) => (
