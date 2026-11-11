@@ -8,7 +8,8 @@ type SelectedPolicies = keyof Pick<
 >;
 
 export const meta: Route.MetaFunction = ({data}) => {
-  return [{title: `Hydrogen | ${data?.policy.title ?? ''}`}];
+  const title = data?.policy.title ?? 'Policy';
+  return [{title: `${title} — Berlin Houseware`}];
 };
 
 export async function loader({params, context}: Route.LoaderArgs) {
@@ -45,15 +46,29 @@ export default function Policy() {
   const {policy} = useLoaderData<typeof loader>();
 
   return (
-    <div className="policy">
-      <br />
-      <br />
-      <div>
-        <Link to="/policies">← Back to Policies</Link>
+    <div className="bg-paper">
+      {/* Header band */}
+      <section className="bg-mint">
+        <div className="ui-container py-12 md:py-16">
+          <Link
+            to="/policies"
+            className="text-sm font-semibold text-brand-700 underline-offset-2 hover:underline"
+          >
+            ← Back to policies
+          </Link>
+          <h1 className="mt-4 text-4xl font-extrabold uppercase tracking-tight md:text-5xl">
+            {policy.title}
+          </h1>
+        </div>
+      </section>
+
+      {/* Body — Shopify policy HTML, styled to the site's prose scale */}
+      <div className="ui-container py-12 md:py-16">
+        <div
+          className="max-w-2xl text-ink [&_a]:font-semibold [&_a]:text-brand-700 [&_a]:underline [&_a]:underline-offset-2 [&_h2]:mb-3 [&_h2]:mt-10 [&_h2]:text-xl [&_h2]:font-extrabold [&_h2]:uppercase [&_h2]:tracking-tight [&_h2:first-child]:mt-0 [&_h3]:mb-2 [&_h3]:mt-6 [&_h3]:text-lg [&_h3]:font-bold [&_li]:leading-relaxed [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6 [&_ol]:text-muted [&_p]:mb-4 [&_p]:leading-relaxed [&_p]:text-muted [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6 [&_ul]:text-muted"
+          dangerouslySetInnerHTML={{__html: policy.body}}
+        />
       </div>
-      <br />
-      <h1>{policy.title}</h1>
-      <div dangerouslySetInnerHTML={{__html: policy.body}} />
     </div>
   );
 }

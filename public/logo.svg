@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 82" width="360" height="82" role="img" aria-label="Berlin Houseware">
+  <path d="M123 23 L187 5 L251 23" fill="none" stroke="#37ad57" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="6" y="70" font-family="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif" font-weight="800" font-size="46" letter-spacing="-2.5">
+    <tspan fill="#101410">berlin</tspan><tspan fill="#37ad57">houseware</tspan>
+  </text>
+</svg>
