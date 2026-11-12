@@ -116,10 +116,10 @@ export function Footer({
       <div className="border-t border-white/10">
         <div className="ui-container flex flex-col items-center justify-between gap-3 py-6 text-xs text-white/50 sm:flex-row">
           <p>
-            © {new Date().getFullYear()}{' '}
-            {header?.shop?.name || 'Berlin Houseware'}. All rights reserved.
+            © {new Date().getFullYear()} BerlinHousewares.com powered by
+            Wholesale For Everyone. All rights reserved.
           </p>
-          <p>Powered by Shopify Hydrogen · Carbon-neutral shipping</p>
+          <p>Powered by NellacosaCorp</p>
         </div>
       </div>
     </footer>
@@ -147,7 +147,10 @@ function FooterMenu({
   primaryDomainUrl: string | undefined;
   publicStoreDomain: string;
 }) {
-  const items = (menu || FALLBACK_FOOTER_MENU).items;
+  const items = ensureReturnPolicy(
+    (menu || FALLBACK_FOOTER_MENU).items,
+    {primaryDomainUrl, publicStoreDomain},
+  );
   return (
     <ul className="mt-4 space-y-3">
       {items.map((item) => {
@@ -182,6 +185,55 @@ function FooterMenu({
       })}
     </ul>
   );
+}
+
+type FooterMenuItem = {
+  id: string;
+  title: string;
+  url?: string | null;
+  resourceId?: string | null;
+  tags?: string[];
+  type?: string;
+  items?: unknown[];
+};
+
+/**
+ * Guarantee the refund/return policy appears in the footer's Help column even
+ * when the live Shopify "footer" menu omits it. Deduped by path, so it never
+ * doubles up if the policy is later added to the Shopify menu.
+ */
+function ensureReturnPolicy(
+  items: readonly FooterMenuItem[],
+  {
+    primaryDomainUrl,
+    publicStoreDomain,
+  }: {primaryDomainUrl: string | undefined; publicStoreDomain: string},
+): FooterMenuItem[] {
+  const toPath = (u: string) =>
+    u.includes('myshopify.com') ||
+    u.includes(publicStoreDomain) ||
+    (primaryDomainUrl && u.includes(primaryDomainUrl))
+      ? new URL(u).pathname
+      : u;
+  const hasRefund = items.some(
+    (i) =>
+      i.url &&
+      toPath(i.url).replace(/\/$/, '').toLowerCase() ===
+        '/policies/refund-policy',
+  );
+  if (hasRefund) return [...items];
+  return [
+    ...items,
+    {
+      id: 'berlin-returns',
+      resourceId: null,
+      tags: [],
+      title: 'Returns',
+      type: 'SHOP_POLICY',
+      url: '/policies/refund-policy',
+      items: [],
+    },
+  ];
 }
 
 const SOCIALS = [
