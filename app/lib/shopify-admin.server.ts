@@ -166,6 +166,25 @@ export async function ensureSeller(
   return {id, created: true};
 }
 
+/**
+ * Add a tag to a product (additive — `tagsAdd` never replaces existing tags).
+ * Used by the sweep to stamp a filterable `seller-<slug>` key, so the storefront
+ * can paginate one seller's products natively (the `custom.seller` metaobject
+ * reference isn't filterable in the Storefront API).
+ */
+export async function addProductTag(
+  env: AdminEnv,
+  productId: string,
+  tag: string,
+): Promise<void> {
+  const data = await adminGraphQL<{
+    tagsAdd: {userErrors: Array<{field: string[]; message: string}>};
+  }>(env, TAGS_ADD, {id: productId, tags: [tag]});
+
+  const errs = data.tagsAdd.userErrors;
+  if (errs?.length) throw new Error(JSON.stringify(errs));
+}
+
 /** Set a product's custom.seller metafield → a seller metaobject. */
 export async function setProductSeller(
   env: AdminEnv,
@@ -224,6 +243,14 @@ const METAOBJECT_CREATE = `
 const METAFIELDS_SET = `
   mutation SetProductSeller($metafields: [MetafieldsSetInput!]!) {
     metafieldsSet(metafields: $metafields) {
+      userErrors { field message }
+    }
+  }
+`;
+
+const TAGS_ADD = `
+  mutation AddProductTag($id: ID!, $tags: [String!]!) {
+    tagsAdd(id: $id, tags: $tags) {
       userErrors { field message }
     }
   }

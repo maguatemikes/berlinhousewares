@@ -79,10 +79,9 @@ img {
 * components/Aside
 * --------------------------------------------------
 */
-@media (max-width: 45em) {
-  html:has(.overlay.expanded) {
-    overflow: hidden;
-  }
+/* Lock background scroll while a drawer/modal is open (all viewports). */
+html:has(.overlay.expanded) {
+  overflow: hidden;
 }
 
 aside {

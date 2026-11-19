@@ -3,6 +3,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import {useId} from 'react';
@@ -36,21 +37,51 @@ export function Aside({
   const {type: activeType, close} = useAside();
   const expanded = type === activeType;
   const id = useId();
-  useEffect(() => {
-    const abortController = new AbortController();
+  const asideRef = useRef<HTMLElement>(null);
 
-    if (expanded) {
-      document.addEventListener(
-        'keydown',
-        function handler(event: KeyboardEvent) {
-          if (event.key === 'Escape') {
-            close();
-          }
-        },
-        {signal: abortController.signal},
-      );
-    }
-    return () => abortController.abort();
+  // Modal focus management (additive — does not change open/close logic):
+  // on open, move focus into the drawer and trap Tab inside it; on close,
+  // restore focus to whatever was focused before (usually the trigger). This
+  // makes the custom dialog behave like a native <dialog> for keyboard/SR users.
+  const FOCUSABLE =
+    'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+  useEffect(() => {
+    if (!expanded) return;
+    const abortController = new AbortController();
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const panel = asideRef.current;
+
+    // Move focus into the drawer (first focusable control).
+    panel?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+
+    document.addEventListener(
+      'keydown',
+      function handler(event: KeyboardEvent) {
+        if (event.key === 'Escape') {
+          close();
+          return;
+        }
+        if (event.key !== 'Tab' || !panel) return;
+        const f = panel.querySelectorAll<HTMLElement>(FOCUSABLE);
+        if (!f.length) return;
+        const first = f[0];
+        const last = f[f.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      },
+      {signal: abortController.signal},
+    );
+
+    return () => {
+      abortController.abort();
+      // Restore focus to the element that opened the drawer.
+      previouslyFocused?.focus();
+    };
   }, [close, expanded]);
 
   return (
@@ -60,8 +91,13 @@ export function Aside({
       role="dialog"
       aria-labelledby={id}
     >
-      <button className="close-outside" onClick={close} />
-      <aside className="flex flex-col !shadow-2xl">
+      <button
+        className="close-outside"
+        onClick={close}
+        aria-label="Close"
+        tabIndex={-1}
+      />
+      <aside ref={asideRef} className="flex flex-col !shadow-2xl">
         <header className="flex shrink-0 items-center justify-between !border-black/10 px-5">
           <h3
             id={id}

@@ -20,6 +20,7 @@ import {
   hasAdminToken,
   ensureSeller,
   setProductSeller,
+  addProductTag,
   type AdminEnv,
 } from '~/lib/shopify-admin.server';
 
@@ -30,6 +31,8 @@ export type SellerSyncSummary = {
   checked: number;
   /** Products whose seller needed to change (and were updated). */
   linked: number;
+  /** Products that were missing the filterable `seller-<slug>` tag (and got it). */
+  tagged: number;
   /** New seller metaobjects created this run. */
   createdSellers: number;
   /** Products already correct — skipped (no write). */
@@ -52,6 +55,7 @@ const RECONCILE_QUERY = `
       nodes {
         id
         title
+        tags
         metafield(namespace: "custom", key: "seller") {
           reference { ... on Metaobject { handle } }
         }
@@ -63,6 +67,7 @@ const RECONCILE_QUERY = `
 type ProductNode = {
   id: string;
   title: string;
+  tags?: string[];
   metafield?: {reference?: {handle?: string} | null} | null;
 };
 
@@ -71,6 +76,7 @@ export async function runSellerSync(env: SyncEnv): Promise<SellerSyncSummary> {
     ok: true,
     checked: 0,
     linked: 0,
+    tagged: 0,
     createdSellers: 0,
     unchanged: 0,
     errors: [],
@@ -120,16 +126,36 @@ export async function runSellerSync(env: SyncEnv): Promise<SellerSyncSummary> {
       summary.checked += 1;
 
       const productId = p.id.split('/').pop() ?? '';
-      const target = consignorMap.get(productId);
-      if (!target) continue; // ResaleOS has no consignor for it → leave as-is
-
-      const targetSlug = sellerHandle(target.accountId);
-      if (!targetSlug) continue;
-
+      const resaleTarget = consignorMap.get(productId);
       const currentHandle = p.metafield?.reference?.handle ?? null;
-      if (currentHandle === targetSlug) {
+
+      // Effective seller for this product: ResaleOS is the source of truth, but
+      // if it has no record (e.g. a product created/assigned by hand in Shopify)
+      // we honor the existing custom.seller metafield — so manual assignments
+      // still get the tag and show on the seller page. The TAG always mirrors the
+      // metafield, whatever set it.
+      const targetSlug = resaleTarget
+        ? sellerHandle(resaleTarget.accountId)
+        : currentHandle;
+      if (!targetSlug) continue; // no seller at all → leave untouched
+
+      // 1) Keep the filterable `seller-<slug>` tag in sync with the effective
+      //    seller (this is what the storefront paginates on). Write-on-change.
+      const targetTag = `seller-${targetSlug}`;
+      if (!(p.tags ?? []).includes(targetTag)) {
+        try {
+          await addProductTag(env, p.id, targetTag);
+          summary.tagged += 1;
+        } catch (e) {
+          summary.errors.push(`${p.title} tag: ${(e as Error).message}`);
+        }
+      }
+
+      // 2) Reconcile the metafield ONLY when ResaleOS provides the target — never
+      //    overwrite a hand-set metafield ResaleOS doesn't know about.
+      if (!resaleTarget || currentHandle === targetSlug) {
         summary.unchanged += 1;
-        continue; // already correct → no write
+        continue;
       }
 
       try {
@@ -137,7 +163,7 @@ export async function runSellerSync(env: SyncEnv): Promise<SellerSyncSummary> {
         if (!sellerId) {
           const {id, created} = await ensureSeller(env, {
             slug: targetSlug,
-            displayName: target.name ?? `Seller ${target.accountId}`,
+            displayName: resaleTarget.name ?? `Seller ${resaleTarget.accountId}`,
           });
           sellerId = id;
           sellerIds.set(targetSlug, id);

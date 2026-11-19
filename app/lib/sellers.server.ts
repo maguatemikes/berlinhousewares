@@ -101,13 +101,54 @@ type Scanned = {
  * grows past that, this becomes a paginated crawl or a metafield-filtered query.
  */
 async function scanSellers(storefront: Storefront): Promise<Map<string, Scanned>> {
-  const {products} = await storefront.query(SELLER_SCAN_QUERY, {
-    cache: storefront.CacheShort(),
-  });
-
   const byHandle = new Map<string, Scanned>();
 
-  for (const p of products.nodes) {
+  // Paginate the WHOLE catalog (not just the first 250) so every seller — and an
+  // accurate per-seller count — is represented, no matter where their products
+  // sit in the catalog.
+  let cursor: string | null = null;
+  do {
+    const {products} = (await storefront.query(SELLER_SCAN_QUERY, {
+      variables: {cursor},
+      cache: storefront.CacheShort(),
+    })) as unknown as {
+      products: {
+        pageInfo: {hasNextPage: boolean; endCursor: string | null};
+        nodes: Array<{
+          id: string;
+          handle: string;
+          title: string;
+          vendor: string;
+          featuredImage: {
+            id?: string | null;
+            altText?: string | null;
+            url: string;
+            width?: number | null;
+            height?: number | null;
+          } | null;
+          priceRange: {
+            minVariantPrice: {amount: string; currencyCode: string};
+            maxVariantPrice: {amount: string; currencyCode: string};
+          };
+          seller?: {
+            reference?: {
+              handle: string;
+              slug?: {value?: string | null} | null;
+              displayName?: {value?: string | null} | null;
+              bio?: {value?: string | null} | null;
+              verified?: {value?: string | null} | null;
+              logo?: {
+                reference?: {
+                  image?: {url: string; altText?: string | null} | null;
+                } | null;
+              } | null;
+            } | null;
+          } | null;
+        }>;
+      };
+    };
+
+    for (const p of products.nodes) {
     const ref = p.seller?.reference;
     if (!ref) continue; // unassigned product → not in any store
 
@@ -146,7 +187,10 @@ async function scanSellers(storefront: Storefront): Promise<Map<string, Scanned>
     });
 
     byHandle.set(handle, entry);
-  }
+    }
+
+    cursor = products.pageInfo?.hasNextPage ? products.pageInfo.endCursor : null;
+  } while (cursor);
 
   return byHandle;
 }
@@ -214,10 +258,195 @@ export async function getSeller(
   return {...toSummary(s), products};
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * Paginated, Shopify-SOURCED seller page (replaces the whole-catalog scan for
+ * the seller DETAIL route). Products come from the Storefront `search` filtered
+ * by the `seller-<handle>` tag the sweep stamps — so the list and the count are
+ * exactly what's live on the storefront (never phantom ResaleOS-only items), and
+ * it paginates natively via <Pagination>. Seller identity comes from the `seller`
+ * metaobject in the same request.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+export type SellerPageProduct = {
+  id: string;
+  handle: string;
+  title: string;
+  vendor: string;
+  featuredImage: {
+    id: string | null;
+    url: string;
+    altText: string | null;
+    width: number | null;
+    height: number | null;
+  } | null;
+  priceRange: {
+    minVariantPrice: {amount: string; currencyCode: string};
+    maxVariantPrice: {amount: string; currencyCode: string};
+  };
+};
+
+export type SellerPage = {
+  handle: string;
+  name: string;
+  initial: string;
+  logoUrl: string | null;
+  verified: boolean;
+  bio: string | null;
+  productCount: number;
+  products: {
+    nodes: SellerPageProduct[];
+    pageInfo: {
+      hasNextPage: boolean;
+      hasPreviousPage: boolean;
+      startCursor: string | null;
+      endCursor: string | null;
+    };
+  };
+};
+
+// The grid uses the `products(query:)` connection (reliable + fresh; `search`
+// lags its index badly right after bulk tag writes). ProductSortKeys: null =
+// default order, PRICE for the two price directions.
+const SELLER_SORT_MAP: Record<string, {sortKey: string | null; reverse: boolean}> =
+  {
+    default: {sortKey: null, reverse: false},
+    'price-asc': {sortKey: 'PRICE', reverse: false},
+    'price-desc': {sortKey: 'PRICE', reverse: true},
+  };
+
+/**
+ * One seller's page: identity (metaobject) + a paginated, tag-filtered product
+ * connection ready for <Pagination>. `paginationVariables` come from Hydrogen's
+ * `getPaginationVariables`; `term` is the optional in-store search term.
+ */
+export async function getSellerPage(
+  storefront: Storefront,
+  handle: string,
+  {
+    sort,
+    term,
+    paginationVariables,
+  }: {
+    sort: SellerSort;
+    term?: string;
+    paginationVariables: Record<string, unknown>;
+  },
+): Promise<SellerPage | null> {
+  const {sortKey, reverse} = SELLER_SORT_MAP[sort] ?? SELLER_SORT_MAP.default;
+
+  // search() honours a `tag:` scope in the QUERY STRING (its `productFilters`
+  // `tag` input is silently ignored on this store), so we filter by the seller
+  // tag there and append the optional in-store search term after it.
+  const text = term?.trim();
+  const searchQuery = text
+    ? `tag:seller-${handle} ${text}`
+    : `tag:seller-${handle}`;
+
+  const data = (await storefront.query(SELLER_PAGE_QUERY, {
+    variables: {
+      handle,
+      query: searchQuery,
+      sortKey,
+      reverse,
+      ...paginationVariables,
+    },
+    cache: storefront.CacheShort(),
+  })) as unknown as {
+    metaobject: {
+      name?: {value: string | null} | null;
+      bio?: {value: string | null} | null;
+      verified?: {value: string | null} | null;
+      logo?: {
+        reference?: {image?: {url: string; altText: string | null} | null} | null;
+      } | null;
+    } | null;
+    // `count` (search) is best-effort — its index lags bulk writes, so callers
+    // treat 0 as "unknown" rather than showing "(0)" over a full grid.
+    count: {totalCount: number} | null;
+    products: {
+      nodes: SellerPageProduct[];
+      pageInfo: SellerPage['products']['pageInfo'];
+    };
+  };
+
+  if (!data.metaobject) return null; // unknown seller → 404
+  const name = data.metaobject.name?.value?.trim() || handle;
+
+  return {
+    handle,
+    name,
+    initial: initialOf(name),
+    logoUrl: data.metaobject.logo?.reference?.image?.url ?? null,
+    verified: data.metaobject.verified?.value === 'true',
+    bio: richTextToPlain(data.metaobject.bio?.value),
+    productCount: data.count?.totalCount ?? 0,
+    products: {nodes: data.products.nodes, pageInfo: data.products.pageInfo},
+  };
+}
+
+const SELLER_PAGE_QUERY = `#graphql
+  query SellerPage(
+    $handle: String!
+    $query: String!
+    $sortKey: ProductSortKeys
+    $reverse: Boolean
+    $first: Int
+    $last: Int
+    $startCursor: String
+    $endCursor: String
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
+    metaobject(handle: {type: "seller", handle: $handle}) {
+      name: field(key: "display_name") { value }
+      bio: field(key: "bio") { value }
+      verified: field(key: "verified") { value }
+      logo: field(key: "logo") {
+        reference {
+          ... on MediaImage { image { url altText } }
+        }
+      }
+    }
+    # Best-effort count (search index lags bulk writes; treated as optional).
+    count: search(query: $query, types: [PRODUCT], first: 1) {
+      totalCount
+    }
+    # Grid: the products(query:) connection — reliable filter + cursor pagination.
+    products(
+      query: $query
+      sortKey: $sortKey
+      reverse: $reverse
+      first: $first
+      last: $last
+      before: $startCursor
+      after: $endCursor
+    ) {
+      nodes {
+        id
+        handle
+        title
+        vendor
+        featuredImage { id url altText width height }
+        priceRange {
+          minVariantPrice { amount currencyCode }
+          maxVariantPrice { amount currencyCode }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
+      }
+    }
+  }
+` as const;
+
 const SELLER_SCAN_QUERY = `#graphql
-  query SellerScan($country: CountryCode, $language: LanguageCode)
+  query SellerScan($country: CountryCode, $language: LanguageCode, $cursor: String)
   @inContext(country: $country, language: $language) {
-    products(first: 250) {
+    products(first: 250, after: $cursor) {
+      pageInfo { hasNextPage endCursor }
       nodes {
         id
         handle

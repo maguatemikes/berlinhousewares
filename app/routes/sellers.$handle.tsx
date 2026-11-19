@@ -1,9 +1,10 @@
 import {useState} from 'react';
 import {Link, useLoaderData, useSearchParams} from 'react-router';
+import {getPaginationVariables, Pagination} from '@shopify/hydrogen';
 import type {Route} from './+types/sellers.$handle';
 import {ProductItem} from '~/components/ProductItem';
 import {SelectMenu} from '~/components/SelectMenu';
-import {getSeller, type SellerSort} from '~/lib/sellers.server';
+import {getSellerPage, type SellerSort} from '~/lib/sellers.server';
 import {siteOrigin, socialMeta} from '~/lib/seo';
 
 export const meta: Route.MetaFunction = ({data, matches}) => {
@@ -15,7 +16,9 @@ export const meta: Route.MetaFunction = ({data, matches}) => {
     : 'Seller store on Berlin Houseware.';
   // Prefer the seller's own logo, then a product photo, else the site image.
   const image =
-    seller?.logoUrl || seller?.previewImages?.[0]?.url || undefined;
+    seller?.logoUrl ||
+    seller?.products?.nodes?.[0]?.featuredImage?.url ||
+    undefined;
   const url = seller
     ? `${siteOrigin(matches)}/sellers/${seller.handle}`
     : undefined;
@@ -32,10 +35,17 @@ export async function loader({context, params, request}: Route.LoaderArgs) {
     throw new Response('Not found', {status: 404});
   }
 
-  const sort = (new URL(request.url).searchParams.get('sort') ||
-    'default') as SellerSort;
+  const url = new URL(request.url);
+  const sort = (url.searchParams.get('sort') || 'default') as SellerSort;
+  const term = url.searchParams.get('q') || '';
+  // Native cursor pagination (same helper the collection pages use).
+  const paginationVariables = getPaginationVariables(request, {pageBy: 24});
 
-  const seller = await getSeller(context.storefront, handle, sort);
+  const seller = await getSellerPage(context.storefront, handle, {
+    sort,
+    term,
+    paginationVariables,
+  });
   if (!seller) {
     throw new Response(`Seller ${handle} not found`, {status: 404});
   }
@@ -77,8 +87,11 @@ export default function SellerStore() {
                       strokeLinejoin="round"
                     />
                   </svg>
-                  {seller.productCount}{' '}
-                  {seller.productCount === 1 ? 'product' : 'products'}
+                  {seller.productCount > 0
+                    ? `${seller.productCount} ${
+                        seller.productCount === 1 ? 'product' : 'products'
+                      }`
+                    : 'Shop products'}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-brand-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
@@ -108,7 +121,11 @@ export default function SellerStore() {
                   : 'text-muted hover:text-ink'
               }`}
             >
-              {t === 'Products' ? `Products (${seller.productCount})` : t}
+              {t === 'Products'
+                ? seller.productCount > 0
+                  ? `Products (${seller.productCount})`
+                  : 'Products'
+                : t}
             </button>
           ))}
         </div>
@@ -128,24 +145,37 @@ export default function SellerStore() {
 function ProductsTab({
   seller,
 }: {
-  seller: Awaited<ReturnType<typeof getSeller>>;
+  seller: NonNullable<Awaited<ReturnType<typeof getSellerPage>>>;
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [q, setQ] = useState('');
-  if (!seller) return null;
-
   const sort = searchParams.get('sort') || 'default';
-  const products = q
-    ? seller.products.filter((p) =>
-        p.title.toLowerCase().includes(q.trim().toLowerCase()),
-      )
-    : seller.products;
+  // The input mirrors the URL term; search runs server-side on submit so it
+  // spans ALL pages, not just the one on screen.
+  const [term, setTerm] = useState(searchParams.get('q') || '');
+  const activeTerm = searchParams.get('q') || '';
+
+  // Drop pagination cursors when the query/sort changes, so results restart at
+  // page 1 (Hydrogen's <Pagination> drives `?cursor=` / `?direction=`).
+  const resetPaging = (next: URLSearchParams) => {
+    next.delete('cursor');
+    next.delete('direction');
+    return next;
+  };
 
   return (
     <div>
       {/* Toolbar */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
+        <form
+          className="relative flex-1"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const next = resetPaging(new URLSearchParams(searchParams));
+            if (term.trim()) next.set('q', term.trim());
+            else next.delete('q');
+            setSearchParams(next, {preventScrollReset: true});
+          }}
+        >
           <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted">
             <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
               <circle
@@ -166,13 +196,13 @@ function ProductsTab({
           </span>
           <input
             type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
             placeholder="Search products…"
             aria-label="Search this seller's products"
             className="!mt-0 !mb-0 w-full rounded-full !border-black/15 bg-white py-2.5 pl-11 pr-4 text-sm text-ink outline-none focus:!border-brand-500"
           />
-        </div>
+        </form>
 
         <SelectMenu
           label="Sort by"
@@ -181,10 +211,9 @@ function ProductsTab({
             {value: 'default', label: 'Default'},
             {value: 'price-asc', label: 'Price: low to high'},
             {value: 'price-desc', label: 'Price: high to low'},
-            {value: 'title', label: 'Title A–Z'},
           ]}
           onChange={(v) => {
-            const next = new URLSearchParams(searchParams);
+            const next = resetPaging(new URLSearchParams(searchParams));
             if (v === 'default') next.delete('sort');
             else next.set('sort', v);
             setSearchParams(next, {preventScrollReset: true});
@@ -192,25 +221,45 @@ function ProductsTab({
         />
       </div>
 
-      {products.length === 0 ? (
+      {seller.products.nodes.length === 0 ? (
         <div className="rounded-3xl bg-mint px-6 py-16 text-center">
           <p className="text-lg font-bold text-ink">No products found</p>
           <p className="mt-1 text-sm text-muted">
-            {q ? 'Try a different search.' : 'This seller has no products yet.'}
+            {activeTerm
+              ? 'Try a different search.'
+              : 'This seller has no products yet.'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
-          {products.map((product, i) => (
-            <ProductItem
-              key={product.id}
-              // SellerProduct is structurally a Shopify product card; cast to the
-              // component's prop union (same fields it reads at runtime).
-              product={product as Parameters<typeof ProductItem>[0]['product']}
-              loading={i < 8 ? 'eager' : 'lazy'}
-            />
-          ))}
-        </div>
+        <Pagination connection={seller.products}>
+          {({nodes, PreviousLink, NextLink, isLoading}) => (
+            <>
+              <div className="mb-8 flex justify-center">
+                <PreviousLink className="btn btn-outline !py-2 text-sm">
+                  {isLoading ? 'Loading…' : '↑ Load newer'}
+                </PreviousLink>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+                {nodes.map((product, i) => (
+                  <ProductItem
+                    key={product.id}
+                    // Structurally a Shopify product card; cast to the
+                    // component's prop union (same fields it reads at runtime).
+                    product={
+                      product as Parameters<typeof ProductItem>[0]['product']
+                    }
+                    loading={i < 8 ? 'eager' : 'lazy'}
+                  />
+                ))}
+              </div>
+              <div className="mt-10 flex justify-center">
+                <NextLink className="btn btn-outline !py-2 text-sm">
+                  {isLoading ? 'Loading…' : 'Load more ↓'}
+                </NextLink>
+              </div>
+            </>
+          )}
+        </Pagination>
       )}
     </div>
   );

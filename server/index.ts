@@ -151,8 +151,12 @@ app.listen(PORT, () => {
 // tick is a few cheap reads and zero writes. New registrations / re-assignments
 // show on the seller pages within ~5 min with no manual step.
 //
-// Prod only: in dev, run it on demand via /admin/run-seller-sync?key=… (same fn).
-if (!DEV) {
+// Always on in prod. In dev it's OFF by default (so a local dev server doesn't
+// write to the real store on every boot) — enable the same 5-min timer for
+// testing with RUN_SELLER_SWEEP=1, or run it on demand via
+// /admin/run-seller-sync?key=… (same fn).
+const SWEEP_ENABLED = !DEV || process.env.RUN_SELLER_SWEEP === '1';
+if (SWEEP_ENABLED) {
   const SWEEP_MS = 5 * 60_000;
   let sweeping = false; // never let two runs overlap
   const sweep = async () => {
@@ -161,10 +165,10 @@ if (!DEV) {
     try {
       const s = await runSellerSync(process.env as unknown as Parameters<typeof runSellerSync>[0]);
       // Stay quiet on no-op ticks; log only when something changed or failed.
-      if (s.linked || s.createdSellers || !s.ok) {
+      if (s.linked || s.tagged || s.createdSellers || !s.ok) {
         console.log(
           `[berlin] seller sweep: checked=${s.checked} linked=${s.linked} ` +
-            `created=${s.createdSellers} unchanged=${s.unchanged} ok=${s.ok}` +
+            `tagged=${s.tagged} created=${s.createdSellers} unchanged=${s.unchanged} ok=${s.ok}` +
             (s.reason ? ` reason=${s.reason}` : '') +
             (s.errors.length ? ` errors=${s.errors.length}` : ''),
         );
@@ -177,7 +181,11 @@ if (!DEV) {
   };
   setInterval(sweep, SWEEP_MS).unref?.();
   setTimeout(sweep, 30_000).unref?.(); // first pass ~30s after boot
-  console.log('[berlin] seller reconcile scheduled every 5 min');
+  console.log(
+    `[berlin] seller reconcile scheduled every 5 min${
+      DEV ? ' (dev — RUN_SELLER_SWEEP=1)' : ''
+    }`,
+  );
 }
 
 /** Express request -> web Request (WHATWG). */
