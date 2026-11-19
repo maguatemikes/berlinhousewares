@@ -338,7 +338,9 @@ export default function Product() {
                 selectedVariant={selectedVariant}
                 quantity={quantity}
                 setQuantity={setQuantity}
-                deliverySlot={<PdpDeliveryOptions />}
+                deliverySlot={
+                  <PdpDeliveryOptions selectedVariant={selectedVariant} />
+                }
                 product={{
                   id: product.id,
                   title: product.title,
@@ -503,7 +505,19 @@ function TrustLine() {
  * the cart itself). Highlight is optimistic (pending fetcher) and settles to the
  * saved cart attribute. No outer bordered wrapper on the PDP.
  */
-function PdpDeliveryOptions() {
+function PdpDeliveryOptions({
+  selectedVariant,
+}: {
+  selectedVariant?: {
+    storeAvailability?: {
+      nodes: Array<{
+        available: boolean;
+        pickUpTime?: string | null;
+        location: {name: string};
+      }>;
+    } | null;
+  } | null;
+}) {
   const root = useRouteLoaderData('root') as
     | {cart?: Promise<{attributes?: Array<{key: string; value: string}>} | null>}
     | undefined;
@@ -515,8 +529,26 @@ function PdpDeliveryOptions() {
   // because this component stays mounted across it.
   const [choice, setChoice] = useState<string | null>(null);
 
+  // Real per-variant pickup availability from Shopify `storeAvailability`.
+  // When the Storefront returns no nodes at all (e.g. local Mock.shop, which
+  // doesn't expose store availability) we DON'T know, so keep pickup selectable
+  // with a generic label — only flag it unavailable when we actually have data
+  // that says the item isn't in stock at a pickup location.
+  const availNodes = selectedVariant?.storeAvailability?.nodes ?? [];
+  const hasAvailData = availNodes.length > 0;
+  const pickupNode = availNodes.find((n) => n.available) ?? null;
+  const pickup = {
+    available: hasAvailData ? Boolean(pickupNode) : true,
+    locationName: pickupNode?.location?.name ?? null,
+    time: pickupNode?.pickUpTime ?? null,
+  };
+
   const tiles = (saved: string | null) => (
-    <PdpDeliveryTiles active={choice ?? pending ?? saved} onPick={setChoice} />
+    <PdpDeliveryTiles
+      active={choice ?? pending ?? saved}
+      onPick={setChoice}
+      pickup={pickup}
+    />
   );
 
   return (
@@ -532,6 +564,26 @@ function PdpDeliveryOptions() {
           }
         </Await>
       </Suspense>
+      {pickup.available && pickup.time ? (
+        <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-brand-700">
+          <svg
+            viewBox="0 0 24 24"
+            className="h-3.5 w-3.5 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m5 13 4 4L19 7" />
+          </svg>
+          <span>
+            {pickup.time}
+            {pickup.locationName ? ` at ${pickup.locationName}` : ''}
+          </span>
+        </p>
+      ) : null}
       <p className="mt-2 text-xs text-muted">
         Pre-selects your choice at checkout — you can still change it there.
       </p>
@@ -542,9 +594,15 @@ function PdpDeliveryOptions() {
 function PdpDeliveryTiles({
   active,
   onPick,
+  pickup,
 }: {
   active: string | null;
   onPick: (method: string) => void;
+  pickup: {
+    available: boolean;
+    locationName: string | null;
+    time: string | null;
+  };
 }) {
   const ICON = {
     viewBox: '0 0 24 24',
@@ -561,9 +619,14 @@ function PdpDeliveryTiles({
       <PdpDeliveryTile
         method="PICK_UP"
         label="Pickup"
-        sub="Berlin, NJ"
+        sub={
+          pickup.available
+            ? (pickup.locationName ?? 'Berlin, NJ')
+            : 'Not available nearby'
+        }
         active={active === 'PICK_UP'}
         onPick={onPick}
+        disabled={!pickup.available}
         icon={
           <svg {...ICON}>
             <path d="M12 21s-6-5.686-6-10a6 6 0 1 1 12 0c0 4.314-6 10-6 10z" />
@@ -596,6 +659,7 @@ function PdpDeliveryTile({
   active,
   icon,
   onPick,
+  disabled = false,
 }: {
   method: 'PICK_UP' | 'SHIPPING';
   label: string;
@@ -603,7 +667,24 @@ function PdpDeliveryTile({
   active: boolean;
   icon: React.ReactNode;
   onPick: (method: string) => void;
+  disabled?: boolean;
 }) {
+  // Unavailable (e.g. no stock at a pickup location): render a non-interactive,
+  // muted tile — kept out of the CartForm so it can't be submitted/selected.
+  if (disabled) {
+    return (
+      <div
+        aria-disabled="true"
+        className="flex w-full items-center gap-3 rounded-2xl border border-black/10 bg-black/[0.03] p-3 text-left opacity-60"
+      >
+        <span className="shrink-0 text-muted">{icon}</span>
+        <span className="flex min-w-0 flex-col">
+          <span className="text-sm font-bold text-ink">{label}</span>
+          <span className="truncate text-xs text-muted">{sub}</span>
+        </span>
+      </div>
+    );
+  }
   return (
     <CartForm route="/cart" action="CustomSetDeliveryMethod" inputs={{method}}>
       <button
